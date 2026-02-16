@@ -1,0 +1,24 @@
+# Сборка и запуск приложения (ЛР3/ЛР5). Без container_name — для CI (нет конфликта имён).
+services:
+  server:
+    build:
+      context: ./arch/server
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USER:-campus}/campus-helper-server:latest
+    ports:
+      - "45454:45454"
+    environment:
+      - DB_PATH=/app/data/campus_helper.db
+    volumes:
+      - db-data:/app/data
+    restart: unless-stopped
+
+  sqlite3:
+    image: keinos/sqlite3:latest
+    volumes:
+      - db-data:/data
+    entrypoint: ["sqlite3"]
+    command: ["--version"]
+
+volumes:
+  db-data:

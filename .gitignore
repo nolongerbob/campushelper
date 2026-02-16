@@ -1,0 +1,14 @@
+# Сборки
+build/
+*.user
+*.autosave
+# Qt
+*.pro.user
+.qmake.stash
+# IDE
+.qtc_clangd/
+*.o
+*.so
+moc_*
+ui_*.h
+qrc_*.cpp

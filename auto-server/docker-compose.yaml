@@ -1,0 +1,36 @@
+# Автосервер: TeamCity Server + Agent (ЛР4/ЛР5)
+# Запуск: docker compose up -d
+# После запуска: http://localhost:8111 → Agents → Authorize у нового агента
+
+services:
+  teamcity-server:
+    image: jetbrains/teamcity-server:latest
+    container_name: teamcity-server-instance
+    user: "0"
+    ports:
+      - "8111:8111"
+    volumes:
+      - teamcity-data:/data/teamcity_server/datadir
+      - teamcity-logs:/opt/teamcity/logs
+    restart: unless-stopped
+
+  teamcity-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    image: teamcity-agent-with-docker:latest
+    container_name: teamcity-agent-instance
+    user: "0"
+    environment:
+      SERVER_URL: "http://teamcity-server:8111"
+    volumes:
+      - teamcity-agent-conf:/data/teamcity_agent/conf
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - teamcity-server
+    restart: unless-stopped
+
+volumes:
+  teamcity-data:
+  teamcity-logs:
+  teamcity-agent-conf:

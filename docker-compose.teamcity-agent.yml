@@ -1,0 +1,24 @@
+# Лабораторная работа 5, пункт 2: TeamCity Agent (test-стенд)
+# Подключение к уже запущенному TeamCity Server.
+# Запуск: docker compose -f docker-compose.teamcity-agent.yml up -d
+# SERVER_URL — адрес сервера с хоста агента (не localhost внутри контейнера).
+
+services:
+  teamcity-agent:
+    image: jetbrains/teamcity-agent:latest
+    container_name: teamcity-agent-instance
+    environment:
+      # Укажите URL сервера: IP хоста или имя контейнера при --link
+      - SERVER_URL=${TEAMCITY_SERVER_URL:-http://host.docker.internal:8111}
+      # Опционально: имя агента, токен авторизации
+      # - AGENT_NAME=agent1
+      # - AGENT_TOKEN=...
+    volumes:
+      - teamcity-agent-conf:/data/teamcity_agent/conf
+    # На Linux без host.docker.internal укажите реальный IP: TEAMCITY_SERVER_URL=http://192.168.x.x:8111
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  teamcity-agent-conf:

@@ -1,0 +1,34 @@
+# Лабораторная работа 3: клиент–сервер, СУБД SQLite3 в Docker
+# Сервер создаёт БД в volume; образ sqlite3 с Docker Hub — для вывода версии и запросов к таблице authorization
+
+# Для загрузки в Docker Hub (ЛР4): задайте DOCKERHUB_USER или укажите image при сборке
+# docker compose build server  → образ documents-server (или $DOCKERHUB_USER/campus-helper-server)
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USER:-campus}/campus-helper-server:latest
+    # Без container_name — в CI каждый запуск получает свой контейнер (build_%id%_server_1)
+    ports:
+      - "45454:45454"
+    environment:
+      - DB_PATH=/app/data/campus_helper.db
+    volumes:
+      - db-data:/app/data
+    restart: unless-stopped
+
+  # Образ с Docker Hub: используется для вывода версии sqlite3 и запросов к БД
+  # Команды:
+  #   Версия:  docker compose run --rm sqlite3 --version
+  #   Данные:  docker compose run --rm sqlite3 /data/campus_helper.db "SELECT * FROM authorization;"
+  #   INSERT:  docker compose run --rm --user root sqlite3 /data/campus_helper.db "INSERT INTO authorization(...) VALUES (...);"
+  sqlite3:
+    image: keinos/sqlite3:latest
+    volumes:
+      - db-data:/data
+    entrypoint: ["sqlite3"]
+    command: ["--version"]
+
+volumes:
+  db-data:

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>АС «Campus Helper»</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTabWidget" name="tabWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="tabSchedule">
+       <attribute name="title">
+        <string>Расписание</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QTableWidget" name="tableSchedule"/>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tabMaterials">
+       <attribute name="title">
+        <string>Учебные материалы</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tabChat">
+       <attribute name="title">
+        <string>Чат</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tabNotifications">
+       <attribute name="title">
+        <string>Уведомления</string>
+       </attribute>
+      </widget>
+      <widget class="QWidget" name="tabResults">
+       <attribute name="title">
+        <string>Результаты и посещаемость</string>
+       </attribute>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="nativeMenuBar">
+    <bool>false</bool>
+   </property>
+   <widget class="QMenu" name="menuUsers">
+    <property name="title">
+     <string>Пользователи</string>
+    </property>
+    <addaction name="actionAddUser"/>
+   </widget>
+   <addaction name="menuUsers"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionAddUser">
+   <property name="text">
+    <string>Добавить пользователя в БД</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

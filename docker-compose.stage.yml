@@ -1,0 +1,29 @@
+# Лабораторная работа 5: развёртывание на stage-сервере
+# Приложение из образа в Docker Hub + БД (volume из ЛР3).
+# Запуск на stage: docker compose -f docker-compose.stage.yml up -d
+# Переменная DOCKER_IMAGE — образ из сборки TeamCity (по умолчанию из Hub).
+
+services:
+  app:
+    image: ${DOCKER_IMAGE:-danprog19/campus-helper-server:latest}
+    container_name: campus-helper-stage
+    ports:
+      - "45454:45454"
+    environment:
+      - DB_PATH=/app/data/campus_helper.db
+    volumes:
+      - stage-db-data:/app/data
+    restart: unless-stopped
+
+  # SQLite3-утилита (по желанию) — тот же volume для проверки БД
+  sqlite3:
+    image: keinos/sqlite3:latest
+    volumes:
+      - stage-db-data:/data
+    entrypoint: ["sqlite3"]
+    command: ["--version"]
+    profiles:
+      - tools
+
+volumes:
+  stage-db-data:

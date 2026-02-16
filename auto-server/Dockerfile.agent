@@ -1,0 +1,16 @@
+# Агент TeamCity с Docker + Docker Compose (для шага «Docker Compose»)
+FROM jetbrains/teamcity-agent:latest
+
+USER root
+
+# Docker CLI — статический бинарник (без конфликта containerd в образе)
+RUN DOCKER_ARCH=$(uname -m) && \
+    ( [ "$DOCKER_ARCH" = "x86_64" ] || [ "$DOCKER_ARCH" = "aarch64" ] ) || DOCKER_ARCH=x86_64 && \
+    curl -sL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-27.3.1.tgz" -o /tmp/docker.tgz && \
+    tar xzf /tmp/docker.tgz -C /tmp && mv /tmp/docker/docker /usr/local/bin/ && rm -rf /tmp/docker.tgz /tmp/docker
+
+# Docker Compose — чтобы dockerCompose.version существовал
+RUN curl -sL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
+    && chmod +x /usr/local/bin/docker-compose
+
+USER 1000
