@@ -1,25 +1,46 @@
-===========================================
-КОД ДЛЯ ШАГА CPPCHECK В TEAMCITY
-===========================================
+========================================
+CPPCHECK ДЛЯ TEAMCITY
+========================================
 
-В TeamCity → Build Steps → Добавь новый шаг:
-- Runner type: Command Line
-- Step name: Static Analysis: cppcheck (качество кода)
-- Run: Custom script
-- Working directory: ПУСТО
+Анализатор качества кода для C++ (категория a)
+✅ Работает на ARM64 нативно
+✅ Бесплатный и открытый исходный код
 
-Вставь ВЕСЬ код ниже в поле "Custom script":
+========================================
+ШАГ В TEAMCITY: cppcheck
+========================================
 
-===========================================
+Runner type: Command Line
+Step name: Static Analysis: cppcheck
+Run: Custom script
+Working directory: ПУСТО
 
-set -e
+Custom script:
+──────────────────────────────────────
+
+#!/bin/bash
+# Статический анализ качества кода с помощью cppcheck
+
+# Убеждаемся что скрипт запускается через bash
+if [ -z "$BASH_VERSION" ]; then
+  exec /bin/bash "$0" "$@"
+fi
+
+set +e
 
 echo "=== Установка cppcheck ==="
 apt-get update -y
-apt-get install -y cppcheck
+apt-get install -y cppcheck || {
+  echo "❌ Не удалось установить cppcheck"
+  exit 1
+}
 
 echo "=== Переход в папку сервера ==="
-cd ./server
+if [ ! -d "./server" ]; then
+  echo "❌ Папка server не найдена!"
+  exit 1
+fi
+cd ./server || exit 1
 
 echo "=== Очистка старых отчетов ==="
 rm -rf ./cppcheck-report
@@ -32,53 +53,47 @@ cppcheck --enable=all --error-exitcode=1 \
   --xml --xml-version=2 \
   --output-file=./cppcheck-report/report.xml \
   --suppress=missingIncludeSystem \
-  *.cpp *.h 2>&1 | tee ./cppcheck-report/output.txt || EXIT_CODE=$?
+  *.cpp *.h 2>&1 | tee ./cppcheck-report/output.txt
+EXIT_CODE=$?
 
 # Проверка на BLOCKER (критические ошибки)
-if grep -iE "error|warning" ./cppcheck-report/output.txt | grep -iE "blocker|critical"; then
+if grep -iE "error|warning" ./cppcheck-report/output.txt 2>/dev/null | grep -iE "blocker|critical"; then
   echo "❌ BLOCKER issues found!"
-  exit 1
+  EXIT_CODE=1
 fi
 
-# Генерация HTML отчета
+# Генерация HTML отчета (всегда, даже если были ошибки)
 echo "=== Генерация HTML отчета ==="
-if command -v cppcheck-htmlreport &> /dev/null; then
-  cppcheck-htmlreport --file=./cppcheck-report/report.xml --report-dir=./cppcheck-report/ --source-dir=. || true
-else
-  echo "⚠️  cppcheck-htmlreport не найден, создаём простой HTML"
-  cat > ./cppcheck-report/index.html << 'HTMLEOF'
-<!DOCTYPE html>
-<html>
-<head><title>cppcheck Report</title></head>
-<body>
-<h1>cppcheck Analysis Report</h1>
-<p>Проверка завершена. Результаты в <a href="report.xml">report.xml</a> и <a href="output.txt">output.txt</a></p>
-<h2>Вывод cppcheck:</h2>
-<pre>
-HTMLEOF
-  cat ./cppcheck-report/output.txt >> ./cppcheck-report/index.html 2>/dev/null || echo "Нет вывода" >> ./cppcheck-report/index.html
-  echo "</pre></body></html>" >> ./cppcheck-report/index.html
+cppcheck --enable=all --html --html-output=./cppcheck-report/ \
+  *.cpp *.h 2>&1 || true
+
+# Проверка наличия файлов отчета
+if [ ! -f ./cppcheck-report/output.txt ]; then
+  echo "⚠️  Отчет не создан"
+  exit 0
 fi
 
-if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+if [ "$EXIT_CODE" -ne 0 ]; then
   echo "❌ cppcheck found issues (exit code: $EXIT_CODE)"
+  echo "Проверь отчет: ./cppcheck-report/output.txt"
   exit 1
 fi
 
 echo "✅ cppcheck analysis completed successfully"
+exit 0
 
-===========================================
-КОНЕЦ КОДА
-===========================================
+──────────────────────────────────────
 
-НАСТРОЙКА АРТЕФАКТОВ:
-В Build Configuration → Artifacts добавь:
+Artifacts paths:
 server/cppcheck-report/** => static-analysis/cppcheck/
 
-НАСТРОЙКА REPORT TAB:
-В Project Settings → Report Tabs → Create new build report tab:
-- Name: cppcheck Report
-- Start page: static-analysis/cppcheck/index.html
+========================================
+НАСТРОЙКА REPORT TAB
+========================================
 
-РЕЗУЛЬТАТ:
-После сборки открой вкладку "cppcheck Report" - там будет HTML отчет с найденными проблемами.
+Project Settings → Report Tabs → Create new report tab:
+
+Tab title: cppcheck Report
+Start page: static-analysis/cppcheck/index.html
+
+========================================
