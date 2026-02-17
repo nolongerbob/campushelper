@@ -2,7 +2,7 @@
 services:
   server:
     build:
-      context: ./arch/server
+      context: ./server
       dockerfile: Dockerfile
     image: ${DOCKERHUB_USER:-campus}/campus-helper-server:latest
     ports:
