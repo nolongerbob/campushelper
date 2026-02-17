@@ -56,7 +56,21 @@ docker compose -f docker-compose.stage.yml up -d
 
 **Что сделано в репозитории:** в `docker-compose.yml` (или `arch/docker-compose.yml`) у сервиса приложения убрано поле **container_name**. Тогда при каждом запуске Docker Compose создаёт контейнер с именем вида `<проект>_server_1`, и сборки не конфликтуют.
 
-**Дополнительно в TeamCity:** в шаге «Docker Compose» в **Additional arguments** (или в команде) можно задать уникальный проект: `-p build%build.number%`. Тогда будет свой набор контейнеров на каждую сборку.
+**В TeamCity — шаг «Docker Compose»:**
+
+**Вариант 1:** В **Additional arguments** укажите уникальный проект: `-p build%build.number%`. Тогда каждая сборка получит свой набор контейнеров.
+
+**Вариант 2:** Перед `up` выполните `down` для очистки старых контейнеров. В **Command** вместо просто `up -d` используйте:
+```
+down && up -d
+```
+Или в **Additional arguments**: `down && up -d` (если команда поддерживает `&&`).
+
+**Вариант 3:** В **Command** перед `docker compose up` добавьте удаление старого контейнера:
+```
+docker rm -f campus-helper-server 2>/dev/null || true
+docker compose up -d
+```
 
 ---
 
