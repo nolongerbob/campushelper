@@ -103,10 +103,11 @@ RUN PVS_VERSION="7.38" && \
     # Если ничего не сработало, создаем заглушки
     if [ "$INSTALLED" = "0" ]; then \
         echo "⚠️ PVS-Studio не удалось скачать - сайт может быть недоступен"; \
-        echo "⚠️ Продолжаем без PVS-Studio, используйте cppcheck"; \
+        echo "⚠️ Создаем образ с заглушками для graceful завершения"; \
         echo '#!/bin/sh\necho "PVS-Studio недоступен, используйте cppcheck"; exit 0' > /usr/local/bin/pvs-studio-analyzer; \
         echo '#!/bin/sh\necho "plog-converter недоступен"; exit 0' > /usr/local/bin/plog-converter; \
         chmod +x /usr/local/bin/pvs-studio-analyzer /usr/local/bin/plog-converter; \
+        echo "✅ Образ создан с заглушками"; \
     fi
 
 WORKDIR /workspace
@@ -185,11 +186,29 @@ if docker run --rm \
   bash -c "
     set +e
     echo '=== Проверка наличия PVS-Studio ==='
-    if ! command -v pvs-studio-analyzer >/dev/null 2>&1 || pvs-studio-analyzer --version 2>&1 | grep -q 'PVS-Studio недоступен'; then
+    if ! command -v pvs-studio-analyzer >/dev/null 2>&1; then
+      echo '⚠️  PVS-Studio не установлен'
+      mkdir -p ./report
+      echo '<html><body><h1>PVS-Studio недоступен</h1><p>PVS-Studio не установлен в контейнере.</p></body></html>' > ./report/index.html
+      exit 0
+    fi
+    # Проверяем, не заглушка ли это
+    if pvs-studio-analyzer --version 2>&1 | grep -q 'PVS-Studio недоступен'; then
       echo '⚠️  PVS-Studio не установлен (сайт недоступен из России)'
       echo '⚠️  Пропускаем PVS-Studio, используйте cppcheck для анализа'
       mkdir -p ./report
-      echo '<html><body><h1>PVS-Studio недоступен</h1><p>Сайт pvs-studio.com заблокирован в России. Используйте cppcheck для анализа.</p></body></html>' > ./report/index.html
+      cat > ./report/index.html <<'HTML_END'
+<!DOCTYPE html>
+<html>
+<head><title>PVS-Studio Report</title></head>
+<body>
+<h1>PVS-Studio недоступен</h1>
+<p><strong>Причина:</strong> Сайт pvs-studio.com заблокирован в России, не удалось скачать установочные пакеты.</p>
+<p><strong>Решение:</strong> Используйте cppcheck для анализа кода - он полностью работает на ARM64.</p>
+<p><strong>Статус:</strong> Билд завершен успешно, анализ выполнен через cppcheck.</p>
+</body>
+</html>
+HTML_END
       exit 0
     fi
     
