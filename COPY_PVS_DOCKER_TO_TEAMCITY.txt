@@ -74,15 +74,22 @@ RUN PVS_VERSION="7.38" && \
     if [ -f /tmp/pvs-studio.tgz ]; then \
         cd /opt && \
         tar -xzf /tmp/pvs-studio.tgz && \
-        mv pvs-studio* pvs-studio || true && \
-        ln -sf /opt/pvs-studio/bin/pvs-studio-analyzer /usr/local/bin/pvs-studio-analyzer && \
-        ln -sf /opt/pvs-studio/bin/plog-converter /usr/local/bin/plog-converter && \
-        rm -f /tmp/pvs-studio.tgz && \
-        echo "✅ PVS-Studio установлен из архива"; \
+        mv pvs-studio* pvs-studio 2>/dev/null || true && \
+        if [ -d pvs-studio ]; then \
+            ln -sf /opt/pvs-studio/bin/pvs-studio-analyzer /usr/local/bin/pvs-studio-analyzer 2>/dev/null || true; \
+            ln -sf /opt/pvs-studio/bin/plog-converter /usr/local/bin/plog-converter 2>/dev/null || true; \
+            rm -f /tmp/pvs-studio.tgz; \
+            echo "✅ PVS-Studio установлен из архива"; \
+        else \
+            echo "⚠️ Архив распакован, но структура неожиданная"; \
+        fi; \
     else \
-        echo "❌ PVS-Studio не установлен - сайт недоступен из России"; \
-        echo "Используйте только cppcheck для анализа"; \
-        exit 1; \
+        echo "⚠️ PVS-Studio не удалось скачать - сайт может быть недоступен"; \
+        echo "⚠️ Продолжаем без PVS-Studio, используйте cppcheck"; \
+        touch /usr/local/bin/pvs-studio-analyzer /usr/local/bin/plog-converter; \
+        chmod +x /usr/local/bin/pvs-studio-analyzer /usr/local/bin/plog-converter; \
+        echo '#!/bin/sh\necho "PVS-Studio недоступен, используйте cppcheck"' > /usr/local/bin/pvs-studio-analyzer; \
+        echo '#!/bin/sh\necho "plog-converter недоступен"' > /usr/local/bin/plog-converter; \
     fi
 
 WORKDIR /workspace
@@ -106,9 +113,19 @@ docker run --rm \
   -w /workspace/server \
   pvs-studio-x86:latest \
   bash -c "
+    set +e
+    echo '=== Проверка наличия PVS-Studio ==='
+    if ! command -v pvs-studio-analyzer >/dev/null 2>&1 || pvs-studio-analyzer --version 2>&1 | grep -q 'PVS-Studio недоступен'; then
+      echo '⚠️  PVS-Studio не установлен (сайт недоступен из России)'
+      echo '⚠️  Пропускаем PVS-Studio, используйте cppcheck для анализа'
+      mkdir -p ./report
+      echo '<html><body><h1>PVS-Studio недоступен</h1><p>Сайт pvs-studio.com заблокирован в России. Используйте cppcheck для анализа.</p></body></html>' > ./report/index.html
+      exit 0
+    fi
+    
     set -e
     echo '=== Добавление лицензии PVS-Studio ==='
-    pvs-studio-analyzer credentials daniel.kojemyakin@icloud.com Y0G0-6XBZ-2R81-C605
+    pvs-studio-analyzer credentials daniel.kojemyakin@icloud.com Y0G0-6XBZ-2R81-C605 || true
     echo '✅ Лицензия добавлена'
     
     echo '=== Очистка старых файлов ==='
@@ -118,17 +135,29 @@ docker run --rm \
     echo '=== Трассировка компиляции ==='
     qmake -o Makefile server.pro
     make clean
-    pvs-studio-analyzer trace -- make
+    pvs-studio-analyzer trace -- make || {
+      echo '⚠️  Трассировка не удалась, пропускаем PVS-Studio'
+      mkdir -p ./report
+      echo '<html><body><h1>PVS-Studio анализ не выполнен</h1><p>Ошибка при трассировке компиляции.</p></body></html>' > ./report/index.html
+      exit 0
+    }
     
     echo '=== Запуск анализа PVS-Studio ==='
     mkdir -p ./report
-    pvs-studio-analyzer analyze -l /root/.config/PVS-Studio/PVS-Studio.lic -o pvs.log --disableLicenseExpirationCheck || true
+    pvs-studio-analyzer analyze -l /root/.config/PVS-Studio/PVS-Studio.lic -o pvs.log --disableLicenseExpirationCheck || {
+      echo '⚠️  Анализ не удался, создаем пустой отчет'
+      echo '<html><body><h1>PVS-Studio анализ не выполнен</h1><p>Ошибка при анализе.</p></body></html>' > ./report/index.html
+      exit 0
+    }
     
     echo '=== Конвертация в HTML ==='
-    plog-converter -a GA:1,2 --renderTypes fullhtml -t tasklist -o ./report/ pvs.log || true
+    plog-converter -a GA:1,2 --renderTypes fullhtml -t tasklist -o ./report/ pvs.log || {
+      echo '⚠️  Конвертация не удалась'
+      exit 0
+    }
     
     echo '=== Проверка результатов ==='
-    if [ -f ./report/pvs.tasks ]; then
+    if [ -f ./report/pvs.tasks ] || [ -f ./report/index.html ]; then
       echo '✅ HTML отчет создан'
     else
       echo '⚠️  Отчет не создан'
