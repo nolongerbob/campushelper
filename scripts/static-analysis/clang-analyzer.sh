@@ -30,9 +30,17 @@ qmake -o Makefile server.pro
 make clean
 
 echo "=== Проверка наличия clang ==="
-CLANG_PATH=$(which clang || echo "/usr/bin/clang")
-if [ ! -x "$CLANG_PATH" ]; then
-  echo "❌ clang не найден!"
+# Пробуем найти clang в стандартных путях
+CLANG_PATH=""
+for path in /usr/bin/clang /usr/local/bin/clang $(command -v clang 2>/dev/null); do
+  if [ -x "$path" ] 2>/dev/null; then
+    CLANG_PATH="$path"
+    break
+  fi
+done
+
+if [ -z "$CLANG_PATH" ]; then
+  echo "❌ clang не найден! Установите пакет clang"
   exit 1
 fi
 echo "✅ clang найден: $CLANG_PATH"
