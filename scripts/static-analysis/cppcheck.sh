@@ -40,8 +40,24 @@ fi
 
 # Генерация HTML отчета (всегда, даже если были ошибки)
 echo "=== Генерация HTML отчета ==="
-cppcheck --enable=all --html --html-output=./cppcheck-report/ \
-  *.cpp *.h 2>&1 || true
+if command -v cppcheck-htmlreport &> /dev/null; then
+  cppcheck-htmlreport --file=./cppcheck-report/report.xml --report-dir=./cppcheck-report/ --source-dir=. || true
+else
+  echo "⚠️  cppcheck-htmlreport не найден, создаём простой HTML"
+  # Создаём простой index.html с информацией
+  cat > ./cppcheck-report/index.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html>
+<head><title>cppcheck Report</title></head>
+<body>
+<h1>cppcheck Analysis Report</h1>
+<p>Проверка завершена. Результаты в <a href="report.xml">report.xml</a> и <a href="output.txt">output.txt</a></p>
+<h2>Вывод cppcheck:</h2>
+<pre>
+HTMLEOF
+  cat ./cppcheck-report/output.txt >> ./cppcheck-report/index.html 2>/dev/null || echo "Нет вывода" >> ./cppcheck-report/index.html
+  echo "</pre></body></html>" >> ./cppcheck-report/index.html
+fi
 
 # Проверка наличия файлов отчета
 if [ ! -f ./cppcheck-report/output.txt ]; then
