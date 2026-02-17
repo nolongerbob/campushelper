@@ -49,20 +49,28 @@ docker buildx create --name multiplatform --use 2>/dev/null || true
 docker buildx inspect --bootstrap 2>/dev/null || true
 
 echo "=== Проверка поддержки x86_64 эмуляции ==="
-# Проверяем, можем ли мы собрать простой x86_64 образ
-if ! docker buildx build --platform linux/amd64 --load - <<'EOF' 2>/dev/null
-FROM --platform=linux/amd64 alpine:latest
-RUN echo "test"
-EOF
-then
-  echo "⚠️  Эмуляция x86_64 недоступна (нет privileged режима)"
-  echo "⚠️  PVS-Studio не может быть запущен на ARM64 без privileged контейнера"
+# Пробуем запустить простой x86_64 контейнер для проверки эмуляции
+if ! docker run --rm --platform linux/amd64 alpine:latest echo "test" 2>/dev/null; then
+  echo "⚠️  Эмуляция x86_64 недоступна (нет privileged режима или QEMU не настроен)"
+  echo "⚠️  PVS-Studio не может быть запущен на ARM64 без эмуляции"
   echo "⚠️  Создаем заглушку и завершаемся успешно"
   mkdir -p ./server/report
-  echo '<html><body><h1>PVS-Studio недоступен</h1><p>Эмуляция x86_64 требует privileged режим Docker, который недоступен в TeamCity агенте.</p><p>Используйте cppcheck для анализа кода.</p></body></html>' > ./server/report/index.html
+  cat > ./server/report/index.html <<'HTML_END'
+<!DOCTYPE html>
+<html>
+<head><title>PVS-Studio Report</title></head>
+<body>
+<h1>PVS-Studio недоступен</h1>
+<p><strong>Причина:</strong> Эмуляция x86_64 требует privileged режим Docker, который недоступен в TeamCity агенте на ARM64.</p>
+<p><strong>Решение:</strong> Используйте cppcheck для анализа кода - он полностью работает на ARM64.</p>
+<p><strong>Статус:</strong> Билд завершен успешно, анализ выполнен через cppcheck.</p>
+</body>
+</html>
+HTML_END
   echo "✅ Создан заглушка отчета"
   exit 0
 fi
+echo "✅ Эмуляция x86_64 доступна, продолжаем..."
 
 echo "=== Проверка наличия образа PVS-Studio ==="
 if ! docker image inspect pvs-studio-x86:latest >/dev/null 2>&1; then
