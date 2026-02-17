@@ -122,9 +122,11 @@
 
 ---
 
-### Шаг 3: Статический анализ PVS-Studio (опционально)
+### Шаг 4: Статический анализ PVS-Studio (опционально, только для x86_64)
 
 PVS-Studio может не работать на ARM64 или если сайт недоступен. Шаг пропускается автоматически, если установка не удалась.
+
+**Примечание:** Для ARM64 используйте **Clang Static Analyzer** (Шаг 2) вместо PVS-Studio.
 
 **Runner type:** Command Line  
 **Custom script:** скопируй из `scripts/static-analysis/pvs-studio.sh` или используй готовый код из `COPY_TO_TEAMCITY.txt`
