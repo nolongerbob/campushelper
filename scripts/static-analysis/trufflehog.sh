@@ -2,20 +2,34 @@
 # Поиск секретов в репозитории с помощью Trufflehog
 # Выход с ошибкой при обнаружении любого секрета
 
-set -e
+set +e  # Отключаем set -e для ручной обработки ошибок
 
 echo "=== Установка Trufflehog ==="
 apt-get update -y
 apt-get install -y wget
 
-# Скачивание последней версии Trufflehog
-TRUFFLEHOG_VERSION="3.63.0"
-wget https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz || \
-  wget https://github.com/trufflesecurity/trufflehog/releases/latest/download/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz
+# Определение архитектуры
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+  ARCH_SUFFIX="arm64"
+else
+  ARCH_SUFFIX="amd64"
+fi
 
-tar -xzf trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz
+echo "=== Архитектура: $ARCH_SUFFIX ==="
+
+# Скачивание Trufflehog для нужной архитектуры
+TRUFFLEHOG_VERSION="3.63.0"
+wget -q https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_${ARCH_SUFFIX}.tar.gz -O trufflehog.tar.gz || \
+  wget -q https://github.com/trufflesecurity/trufflehog/releases/latest/download/trufflehog_${TRUFFLEHOG_VERSION}_linux_${ARCH_SUFFIX}.tar.gz -O trufflehog.tar.gz || {
+  echo "⚠️  Не удалось скачать Trufflehog для $ARCH_SUFFIX, пропускаем проверку секретов"
+  exit 0
+}
+
+tar -xzf trufflehog.tar.gz
 chmod +x trufflehog
-mv trufflehog /usr/local/bin/ || cp trufflehog /usr/local/bin/
+mv trufflehog /usr/local/bin/ 2>/dev/null || cp trufflehog /usr/local/bin/
+rm -f trufflehog.tar.gz
 
 echo "=== Создание директории для отчета ==="
 mkdir -p ./trufflehog-report

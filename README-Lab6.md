@@ -52,12 +52,16 @@
 
 ## 3. Шаги статического анализа в TeamCity
 
-### Шаг 1: Статический анализ cppcheck (качество кода)
+**Готовые скрипты:** см. файл `TEAMCITY_STATIC_ANALYSIS_FINAL.txt` — там готовый код для копирования.
+
+### Шаг 1: Статический анализ cppcheck (качество кода) — ОБЯЗАТЕЛЬНО
 
 **Runner type:** Command Line  
-**Custom script:** выполнить `bash scripts/static-analysis/cppcheck.sh`
+**Step name:** Static Analysis: cppcheck  
+**Run:** Custom script  
+**Working directory:** ПУСТО
 
-Или вставить содержимое скрипта напрямую в TeamCity.
+**Custom script:** скопируй из `TEAMCITY_STATIC_ANALYSIS_FINAL.txt` (раздел "ШАГ 1: CPPCHECK")
 
 **Критичность:** при обнаружении **BLOCKER** → билд завершается с ошибкой.
 
@@ -65,30 +69,31 @@
 
 ---
 
-### Шаг 2: Статический анализ PVS-Studio (безопасность)
+### Шаг 2: Поиск секретов Trufflehog — ОБЯЗАТЕЛЬНО
 
 **Runner type:** Command Line  
-**Custom script:** выполнить `bash scripts/static-analysis/pvs-studio.sh`
+**Step name:** Static Analysis: Trufflehog  
+**Run:** Custom script  
+**Working directory:** ПУСТО
 
-**Важно:** перед использованием замените лицензию PVS-Studio в скрипте:
-```bash
-pvs-studio-analyzer credentials YOUR_EMAIL YOUR_LICENSE_KEY
-```
-
-**Критичность:** при обнаружении **CRITICAL** (err в отчете) → билд завершается с ошибкой.
-
-**Artifacts:** `server/report/** => static-analysis/pvs-studio/`
-
----
-
-### Шаг 3: Поиск секретов Trufflehog
-
-**Runner type:** Command Line  
-**Custom script:** выполнить `bash scripts/static-analysis/trufflehog.sh`
+**Custom script:** скопируй из `TEAMCITY_STATIC_ANALYSIS_FINAL.txt` (раздел "ШАГ 2: TRUFFLEHOG")
 
 **Критичность:** при обнаружении **любого секрета** → билд завершается с ошибкой.
 
 **Artifacts:** `trufflehog-report/** => static-analysis/trufflehog/`
+
+---
+
+### Шаг 3: Статический анализ PVS-Studio (опционально)
+
+PVS-Studio может не работать на ARM64 или если сайт недоступен. Шаг пропускается автоматически, если установка не удалась.
+
+**Runner type:** Command Line  
+**Custom script:** скопируй из `scripts/static-analysis/pvs-studio.sh` или используй готовый код из `COPY_TO_TEAMCITY.txt`
+
+**Критичность:** при обнаружении **CRITICAL** (err в отчете) → билд завершается с ошибкой.
+
+**Artifacts:** `server/report/** => static-analysis/pvs-studio/`
 
 ---
 
