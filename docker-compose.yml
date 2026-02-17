@@ -13,12 +13,5 @@ services:
       - db-data:/app/data
     restart: unless-stopped
 
-  sqlite3:
-    image: keinos/sqlite3:latest
-    volumes:
-      - db-data:/data
-    entrypoint: ["sqlite3"]
-    command: ["--version"]
-
 volumes:
   db-data:
