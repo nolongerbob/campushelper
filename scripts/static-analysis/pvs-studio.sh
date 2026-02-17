@@ -15,9 +15,10 @@ apt-get update -y
 apt-get install -y pvs-studio
 
 echo "=== Добавление лицензии PVS-Studio ==="
-# ЗАМЕНИТЕ на свою лицензию или используйте триал
-# pvs-studio-analyzer credentials YOUR_EMAIL YOUR_LICENSE_KEY
-echo "⚠️  ВНИМАНИЕ: Замените лицензию PVS-Studio на свою!"
+# Бесплатная лицензия без регистрации (работает с комментариями в коде)
+pvs-studio-analyzer credentials PVS-Studio Free FREE-FREE-FREE-FREE
+echo "✅ Используется бесплатная лицензия PVS-Studio Free"
+echo "⚠️  Требуется комментарий PVS-Studio в начале каждого .cpp/.h файла"
 
 echo "=== Переход в папку сервера ==="
 cd ./server
