@@ -37,25 +37,37 @@
 
 Для проекта **Campus Helper (Qt/C++)** выбраны:
 
-1. **cppcheck** — анализатор качества кода (бесплатный, открытый исходный код)
-2. **PVS-Studio Free** — анализатор безопасности (бесплатная версия без регистрации, работает с комментариями в коде)
-3. **Trufflehog** — поиск секретов в репозитории (бесплатный, открытый исходный код)
+1. **cppcheck** — анализатор качества кода ✅ (категория a)
+2. **Clang Static Analyzer** — анализатор безопасности кода ✅ (категория b)
+3. **Trufflehog** — поиск секретов в репозитории ✅ (категория c)
 
-**Примечание:** PVS-Studio Free работает без регистрации и лицензионного ключа, если в начале каждого исходного файла есть комментарий:
-```cpp
-// This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
-```
-Этот комментарий уже добавлен во все файлы сервера.
+### Описание анализаторов:
 
-### ⚠️ ВАЖНО: PVS-Studio и ARM64
+#### cppcheck (качество кода)
+- **Тип:** Анализатор качества кода для C/C++
+- **Лицензия:** GPL, бесплатный
+- **Поддержка ARM64:** ✅ Да
+- **Что проверяет:** Утечки памяти, неиспользуемые переменные, логические ошибки, стиль кода
 
-**PVS-Studio не поддерживает ARM64 на Linux** (только x86_64). Если ваш TeamCity агент работает на ARM64:
+#### Clang Static Analyzer (безопасность)
+- **Тип:** Анализатор безопасности кода для C/C++
+- **Лицензия:** Apache 2.0, бесплатный
+- **Поддержка ARM64:** ✅ Да (встроен в Clang)
+- **Что проверяет:** Buffer overflow, use-after-free, null pointer dereference, memory leaks, race conditions
 
-- **Вариант А (РЕКОМЕНДУЕТСЯ):** Используйте только `cppcheck` + `Trufflehog` - они полностью работают на ARM64 и достаточны для лабораторной.
-- **Вариант Б (МЕДЛЕННО, ~10 минут):** Используйте `scripts/static-analysis/pvs-studio-docker.sh` - запускает PVS-Studio через Docker x86_64 эмуляцию.
+#### Trufflehog (поиск секретов)
+- **Тип:** Средство поиска учетных данных/секретов
+- **Лицензия:** Apache 2.0, бесплатный
+- **Поддержка ARM64:** ✅ Да
+- **Что проверяет:** API ключи, пароли, токены, приватные ключи в коде и Git истории
 
-Для проверки архитектуры: `uname -m` (если вывод `aarch64` или `arm64` - у вас ARM64).
+### ⚠️ Альтернатива: PVS-Studio
+
+**PVS-Studio не поддерживает ARM64 на Linux** (только x86_64). Поэтому выбран **Clang Static Analyzer** как альтернатива - он:
+- ✅ Работает на ARM64 нативно
+- ✅ Бесплатный и открытый исходный код
+- ✅ Встроен в Clang (не требует установки)
+- ✅ Находит проблемы безопасности (CWE, CERT)
 
 ---
 
@@ -78,7 +90,24 @@
 
 ---
 
-### Шаг 2: Поиск секретов Trufflehog — ОБЯЗАТЕЛЬНО
+### Шаг 2: Статический анализ Clang Static Analyzer (безопасность) — ОБЯЗАТЕЛЬНО
+
+**Runner type:** Command Line  
+**Step name:** Static Analysis: Clang Static Analyzer (security)  
+**Run:** Custom script  
+**Working directory:** ПУСТО
+
+**Custom script:** скопируй из `COPY_CLANG_TO_TEAMCITY.txt`
+
+**Критичность:** предупреждения о проблемах безопасности → билд продолжается, но проблемы отображаются в отчете.
+
+**Artifacts:** `server/report-clang/** => clang-analyzer-report/`
+
+**Report Tab:** `clang-analyzer-report/index.html`
+
+---
+
+### Шаг 3: Поиск секретов Trufflehog — ОБЯЗАТЕЛЬНО
 
 **Runner type:** Command Line  
 **Step name:** Static Analysis: Trufflehog  
