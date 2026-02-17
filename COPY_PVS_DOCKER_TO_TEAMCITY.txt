@@ -35,15 +35,24 @@ fi
 echo "⚠️  ARM64 обнаружен, запускаем PVS-Studio через Docker x86_64"
 echo "⚠️  Это займет 5-10 минут из-за эмуляции!"
 
-echo "=== Установка qemu для эмуляции x86_64 ==="
+echo "=== Установка qemu и настройка Docker buildx ==="
 apt-get update -y
-apt-get install -y qemu-user-static
+apt-get install -y qemu-user-static binfmt-support
+
+echo "=== Регистрация QEMU для эмуляции x86_64 ==="
+# Регистрируем binfmt для автоматической эмуляции
+update-binfmts --enable qemu-x86_64 || true
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+
+echo "=== Настройка Docker buildx ==="
+docker buildx create --name multiplatform --use 2>/dev/null || docker buildx use multiplatform || true
+docker buildx inspect --bootstrap || true
 
 echo "=== Проверка наличия образа PVS-Studio ==="
 if ! docker image inspect pvs-studio-x86:latest >/dev/null 2>&1; then
   echo "=== Создание Dockerfile для PVS-Studio ==="
   cat > /tmp/Dockerfile.pvs <<'DOCKERFILE_END'
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -59,8 +68,8 @@ RUN apt-get update && \
 WORKDIR /workspace
 DOCKERFILE_END
 
-  echo "=== Сборка Docker образа (займет 10-15 минут при первом запуске) ==="
-  docker build --platform linux/amd64 -f /tmp/Dockerfile.pvs -t pvs-studio-x86:latest /tmp/
+  echo "=== Сборка Docker образа через buildx (займет 10-15 минут при первом запуске) ==="
+  docker buildx build --platform linux/amd64 --load -f /tmp/Dockerfile.pvs -t pvs-studio-x86:latest /tmp/
   echo "✅ Образ собран и закеширован для последующих запусков"
 else
   echo "✅ Образ pvs-studio-x86:latest уже существует, пропускаем сборку"
@@ -70,7 +79,9 @@ echo "=== Подготовка директорий ==="
 mkdir -p ./server/report
 
 echo "=== Запуск анализа PVS-Studio в Docker контейнере ==="
-docker run --platform linux/amd64 --rm \
+# Используем qemu-x86_64 для эмуляции
+docker run --rm \
+  --platform linux/amd64 \
   -v "$(pwd):/workspace" \
   -w /workspace/server \
   pvs-studio-x86:latest \

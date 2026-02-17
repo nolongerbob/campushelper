@@ -19,11 +19,20 @@ echo "⚠️  Это будет медленно из-за эмуляции!"
 
 echo "=== Установка зависимостей ==="
 apt-get update -y
-apt-get install -y docker.io qemu-user-static
+apt-get install -y docker.io qemu-user-static binfmt-support
+
+echo "=== Регистрация QEMU для эмуляции x86_64 ==="
+# Регистрируем binfmt для автоматической эмуляции
+update-binfmts --enable qemu-x86_64 || true
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+
+echo "=== Настройка Docker buildx ==="
+docker buildx create --name multiplatform --use 2>/dev/null || docker buildx use multiplatform || true
+docker buildx inspect --bootstrap || true
 
 echo "=== Создание Dockerfile для PVS-Studio ==="
 cat > /tmp/Dockerfile.pvs <<'EOF'
-FROM --platform=linux/amd64 ubuntu:22.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -39,11 +48,12 @@ RUN apt-get update && \
 WORKDIR /workspace
 EOF
 
-echo "=== Сборка Docker образа (может занять 5-10 минут) ==="
-docker build --platform linux/amd64 -f /tmp/Dockerfile.pvs -t pvs-studio-x86:latest /tmp/
+echo "=== Сборка Docker образа через buildx (может занять 10-15 минут) ==="
+docker buildx build --platform linux/amd64 --load -f /tmp/Dockerfile.pvs -t pvs-studio-x86:latest /tmp/
 
 echo "=== Запуск анализа в контейнере ==="
-docker run --platform linux/amd64 --rm \
+docker run --rm \
+  --platform linux/amd64 \
   -v "$(pwd):/workspace" \
   -w /workspace/server \
   pvs-studio-x86:latest \
