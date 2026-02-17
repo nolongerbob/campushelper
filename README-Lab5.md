@@ -66,11 +66,11 @@ down && up -d
 ```
 Или в **Additional arguments**: `down && up -d` (если команда поддерживает `&&`).
 
-**Вариант 3:** В **Command** перед `docker compose up` добавьте удаление старого контейнера:
+**Вариант 3 (рекомендуется):** Вместо шага «Docker Compose» используйте шаг **Command Line** и выполните:
+```bash
+sh ci/run-compose.sh
 ```
-docker rm -f campus-helper-server 2>/dev/null || true
-docker compose up -d
-```
+Скрипт сам удалит старый контейнер и запустит compose с уникальным именем проекта.
 
 ---
 
