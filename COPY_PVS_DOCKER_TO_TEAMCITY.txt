@@ -61,35 +61,49 @@ RUN apt-get update && \
     apt-get install -y wget build-essential qt5-qmake qtbase5-dev cmake curl ca-certificates tar gzip && \
     rm -rf /var/lib/apt/lists/*
 
-# Скачивание и установка PVS-Studio из tgz архива (минуя репозиторий)
-# Пробуем несколько источников
+# Скачивание и установка PVS-Studio (пробуем deb пакет, затем tgz архив)
 RUN PVS_VERSION="7.38" && \
-    (wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
-    "https://files.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
-     wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
-     "https://cdn.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
-     wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
-     "https://pvs-studio.com/static/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
-     echo "⚠️ Не удалось скачать PVS-Studio, сайт может быть недоступен") && \
-    if [ -f /tmp/pvs-studio.tgz ]; then \
-        cd /opt && \
-        tar -xzf /tmp/pvs-studio.tgz && \
-        mv pvs-studio* pvs-studio 2>/dev/null || true && \
-        if [ -d pvs-studio ]; then \
-            ln -sf /opt/pvs-studio/bin/pvs-studio-analyzer /usr/local/bin/pvs-studio-analyzer 2>/dev/null || true; \
-            ln -sf /opt/pvs-studio/bin/plog-converter /usr/local/bin/plog-converter 2>/dev/null || true; \
-            rm -f /tmp/pvs-studio.tgz; \
-            echo "✅ PVS-Studio установлен из архива"; \
-        else \
-            echo "⚠️ Архив распакован, но структура неожиданная"; \
+    INSTALLED=0 && \
+    # Пробуем скачать deb пакет напрямую
+    (wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.deb \
+    "https://files.pvs-studio.com/pvs-studio_${PVS_VERSION}_amd64.deb" 2>/dev/null || \
+     wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.deb \
+     "https://cdn.pvs-studio.com/pvs-studio_${PVS_VERSION}_amd64.deb" 2>/dev/null) && \
+    if [ -f /tmp/pvs-studio.deb ]; then \
+        echo "📦 Установка из deb пакета..."; \
+        dpkg -i /tmp/pvs-studio.deb || apt-get install -f -y; \
+        rm -f /tmp/pvs-studio.deb; \
+        INSTALLED=1; \
+    fi && \
+    # Если deb не сработал, пробуем tgz архив
+    if [ "$INSTALLED" = "0" ]; then \
+        echo "📦 Пробуем tgz архив..."; \
+        (wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+        "https://files.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" 2>/dev/null || \
+         wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+         "https://cdn.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" 2>/dev/null || \
+         wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+         "https://pvs-studio.com/static/pvs-studio-${PVS_VERSION}-x86_64.tgz" 2>/dev/null) && \
+        if [ -f /tmp/pvs-studio.tgz ]; then \
+            cd /opt && \
+            tar -xzf /tmp/pvs-studio.tgz && \
+            mv pvs-studio* pvs-studio 2>/dev/null || true && \
+            if [ -d pvs-studio ]; then \
+                ln -sf /opt/pvs-studio/bin/pvs-studio-analyzer /usr/local/bin/pvs-studio-analyzer 2>/dev/null || true; \
+                ln -sf /opt/pvs-studio/bin/plog-converter /usr/local/bin/plog-converter 2>/dev/null || true; \
+                rm -f /tmp/pvs-studio.tgz; \
+                INSTALLED=1; \
+                echo "✅ PVS-Studio установлен из архива"; \
+            fi; \
         fi; \
-    else \
+    fi && \
+    # Если ничего не сработало, создаем заглушки
+    if [ "$INSTALLED" = "0" ]; then \
         echo "⚠️ PVS-Studio не удалось скачать - сайт может быть недоступен"; \
         echo "⚠️ Продолжаем без PVS-Studio, используйте cppcheck"; \
-        touch /usr/local/bin/pvs-studio-analyzer /usr/local/bin/plog-converter; \
+        echo '#!/bin/sh\necho "PVS-Studio недоступен, используйте cppcheck"; exit 0' > /usr/local/bin/pvs-studio-analyzer; \
+        echo '#!/bin/sh\necho "plog-converter недоступен"; exit 0' > /usr/local/bin/plog-converter; \
         chmod +x /usr/local/bin/pvs-studio-analyzer /usr/local/bin/plog-converter; \
-        echo '#!/bin/sh\necho "PVS-Studio недоступен, используйте cppcheck"' > /usr/local/bin/pvs-studio-analyzer; \
-        echo '#!/bin/sh\necho "plog-converter недоступен"' > /usr/local/bin/plog-converter; \
     fi
 
 WORKDIR /workspace
