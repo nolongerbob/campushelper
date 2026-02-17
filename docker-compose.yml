@@ -5,8 +5,8 @@ services:
       context: ./server
       dockerfile: Dockerfile
     image: ${DOCKERHUB_USER:-campus}/campus-helper-server:latest
-    ports:
-      - "45454:45454"
+    # Порт не пробрасываем в CI — контейнер только проверяется на запуск, доступ не нужен
+    # Порт 45454 используется только в docker-compose.stage.yml для реального stage-сервера
     environment:
       - DB_PATH=/app/data/campus_helper.db
     volumes:
