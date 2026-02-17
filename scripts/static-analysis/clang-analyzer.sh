@@ -24,11 +24,19 @@ echo "=== Трассировка компиляции ==="
 qmake -o Makefile server.pro
 make clean
 
+echo "=== Проверка наличия clang ==="
+CLANG_PATH=$(which clang || echo "/usr/bin/clang")
+if [ ! -x "$CLANG_PATH" ]; then
+  echo "❌ clang не найден!"
+  exit 1
+fi
+echo "✅ clang найден: $CLANG_PATH"
+
 echo "=== Запуск Clang Static Analyzer ==="
 # Используем scan-build для анализа
 # scan-build генерирует HTML отчет
 scan-build -o ./report-clang \
-  --use-analyzer=clang \
+  --use-analyzer="$CLANG_PATH" \
   --html-title="Campus Helper - Clang Static Analyzer Report" \
   make 2>&1 | tee clang-analyzer.log
 
