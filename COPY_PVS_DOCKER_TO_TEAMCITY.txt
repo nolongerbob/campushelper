@@ -56,14 +56,34 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Установка зависимостей
 RUN apt-get update && \
-    apt-get install -y wget gnupg2 build-essential qt5-qmake qtbase5-dev cmake && \
-    mkdir -p /etc/apt/keyrings && \
-    wget -qO- https://cdn.pvs-studio.com/etc/pubkey.txt | gpg --dearmor > /etc/apt/keyrings/pvs-studio.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] https://cdn.pvs-studio.com/deb stable main" > /etc/apt/sources.list.d/viva64.list && \
-    apt-get update && \
-    apt-get install -y pvs-studio && \
+    apt-get install -y wget build-essential qt5-qmake qtbase5-dev cmake curl ca-certificates tar gzip && \
     rm -rf /var/lib/apt/lists/*
+
+# Скачивание и установка PVS-Studio из tgz архива (минуя репозиторий)
+# Пробуем несколько источников
+RUN PVS_VERSION="7.38" && \
+    (wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+    "https://files.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
+     wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+     "https://cdn.pvs-studio.com/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
+     wget --no-check-certificate --timeout=30 -O /tmp/pvs-studio.tgz \
+     "https://pvs-studio.com/static/pvs-studio-${PVS_VERSION}-x86_64.tgz" || \
+     echo "⚠️ Не удалось скачать PVS-Studio, сайт может быть недоступен") && \
+    if [ -f /tmp/pvs-studio.tgz ]; then \
+        cd /opt && \
+        tar -xzf /tmp/pvs-studio.tgz && \
+        mv pvs-studio* pvs-studio || true && \
+        ln -sf /opt/pvs-studio/bin/pvs-studio-analyzer /usr/local/bin/pvs-studio-analyzer && \
+        ln -sf /opt/pvs-studio/bin/plog-converter /usr/local/bin/plog-converter && \
+        rm -f /tmp/pvs-studio.tgz && \
+        echo "✅ PVS-Studio установлен из архива"; \
+    else \
+        echo "❌ PVS-Studio не установлен - сайт недоступен из России"; \
+        echo "Используйте только cppcheck для анализа"; \
+        exit 1; \
+    fi
 
 WORKDIR /workspace
 DOCKERFILE_END

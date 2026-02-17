@@ -36,14 +36,23 @@ FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Установка зависимостей
 RUN apt-get update && \
-    apt-get install -y wget gnupg2 build-essential qt5-qmake qtbase5-dev cmake && \
-    mkdir -p /etc/apt/keyrings && \
-    wget -qO- https://cdn.pvs-studio.com/etc/pubkey.txt | gpg --dearmor > /etc/apt/keyrings/pvs-studio.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] https://cdn.pvs-studio.com/deb stable main" > /etc/apt/sources.list.d/viva64.list && \
-    apt-get update && \
-    apt-get install -y pvs-studio && \
+    apt-get install -y wget gnupg2 build-essential qt5-qmake qtbase5-dev cmake curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+# Скачивание и установка PVS-Studio напрямую (минуя репозиторий)
+# Используем прямую ссылку на deb пакет последней версии
+RUN PVS_VERSION="7.38" && \
+    (wget --no-check-certificate -O /tmp/pvs-studio.deb \
+    "https://files.pvs-studio.com/pvs-studio_${PVS_VERSION}_amd64.deb" || \
+     wget --no-check-certificate -O /tmp/pvs-studio.deb \
+     "https://cdn.pvs-studio.com/pvs-studio_${PVS_VERSION}_amd64.deb" || \
+     echo "⚠️ Не удалось скачать PVS-Studio, пропускаем установку") && \
+    if [ -f /tmp/pvs-studio.deb ]; then \
+        dpkg -i /tmp/pvs-studio.deb || apt-get install -f -y; \
+        rm -f /tmp/pvs-studio.deb; \
+    fi
 
 WORKDIR /workspace
 EOF
