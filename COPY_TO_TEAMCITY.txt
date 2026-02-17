@@ -34,7 +34,7 @@ apt-get install -y pvs-studio || {
 }
 
 echo "=== Добавление лицензии PVS-Studio ==="
-pvs-studio-analyzer credentials PVS-Studio Free FREE-FREE-FREE-FREE
+pvs-studio-analyzer credentials daniel.kojemyakin@icloud.com Y0G0-6XBZ-2R81-C605
 
 echo "=== Переход в папку сервера ==="
 cd ./server

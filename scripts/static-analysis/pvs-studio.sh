@@ -29,10 +29,9 @@ apt-get install -y pvs-studio || {
 }
 
 echo "=== Добавление лицензии PVS-Studio ==="
-# Бесплатная лицензия без регистрации (работает с комментариями в коде)
-pvs-studio-analyzer credentials PVS-Studio Free FREE-FREE-FREE-FREE
-echo "✅ Используется бесплатная лицензия PVS-Studio Free"
-echo "⚠️  Требуется комментарий PVS-Studio в начале каждого .cpp/.h файла"
+# Лицензионный ключ PVS-Studio
+pvs-studio-analyzer credentials daniel.kojemyakin@icloud.com Y0G0-6XBZ-2R81-C605
+echo "✅ Лицензия PVS-Studio добавлена"
 
 echo "=== Переход в папку сервера ==="
 cd ./server
