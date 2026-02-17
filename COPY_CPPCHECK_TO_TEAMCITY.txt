@@ -1,0 +1,69 @@
+===========================================
+КОД ДЛЯ ШАГА CPPCHECK В TEAMCITY
+===========================================
+
+В TeamCity → Build Steps → Добавь новый шаг:
+- Runner type: Command Line
+- Step name: Static Analysis: cppcheck (качество кода)
+- Run: Custom script
+- Working directory: ПУСТО
+
+Вставь ВЕСЬ код ниже в поле "Custom script":
+
+===========================================
+
+set -e
+
+echo "=== Установка cppcheck ==="
+apt-get update -y
+apt-get install -y cppcheck
+
+echo "=== Переход в папку сервера ==="
+cd ./server
+
+echo "=== Очистка старых отчетов ==="
+rm -rf ./cppcheck-report
+mkdir -p ./cppcheck-report
+
+echo "=== Запуск анализа cppcheck ==="
+# --enable=all включает все проверки
+# --error-exitcode=1 — выход с ошибкой при обнаружении проблем
+cppcheck --enable=all --error-exitcode=1 \
+  --xml --xml-version=2 \
+  --output-file=./cppcheck-report/report.xml \
+  --suppress=missingIncludeSystem \
+  *.cpp *.h 2>&1 | tee ./cppcheck-report/output.txt || EXIT_CODE=$?
+
+# Проверка на BLOCKER (критические ошибки)
+if grep -iE "error|warning" ./cppcheck-report/output.txt | grep -iE "blocker|critical"; then
+  echo "❌ BLOCKER issues found!"
+  exit 1
+fi
+
+# Генерация HTML отчета
+echo "=== Генерация HTML отчета ==="
+cppcheck --enable=all --html --html-output=./cppcheck-report/ \
+  *.cpp *.h 2>&1 || true
+
+if [ "${EXIT_CODE:-0}" -ne 0 ]; then
+  echo "❌ cppcheck found issues (exit code: $EXIT_CODE)"
+  exit 1
+fi
+
+echo "✅ cppcheck analysis completed successfully"
+
+===========================================
+КОНЕЦ КОДА
+===========================================
+
+НАСТРОЙКА АРТЕФАКТОВ:
+В Build Configuration → Artifacts добавь:
+server/cppcheck-report/** => static-analysis/cppcheck/
+
+НАСТРОЙКА REPORT TAB:
+В Project Settings → Report Tabs → Create new build report tab:
+- Name: cppcheck Report
+- Start page: static-analysis/cppcheck/index.html
+
+РЕЗУЛЬТАТ:
+После сборки открой вкладку "cppcheck Report" - там будет HTML отчет с найденными проблемами.
