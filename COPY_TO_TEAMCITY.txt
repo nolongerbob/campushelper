@@ -1,6 +1,11 @@
-#!/bin/bash
-# Статический анализ безопасности с помощью PVS-Studio
-# Выход с ошибкой при обнаружении CRITICAL проблем
+===========================================
+СКОПИРУЙ ВСЁ ЭТО В TEAMCITY
+===========================================
+
+В TeamCity → Build Steps → Static Analysis: PVS-Studio
+В поле "Custom script" вставь ВЕСЬ код ниже:
+
+===========================================
 
 set -e
 
@@ -29,10 +34,7 @@ apt-get install -y pvs-studio || {
 }
 
 echo "=== Добавление лицензии PVS-Studio ==="
-# Бесплатная лицензия без регистрации (работает с комментариями в коде)
 pvs-studio-analyzer credentials PVS-Studio Free FREE-FREE-FREE-FREE
-echo "✅ Используется бесплатная лицензия PVS-Studio Free"
-echo "⚠️  Требуется комментарий PVS-Studio в начале каждого .cpp/.h файла"
 
 echo "=== Переход в папку сервера ==="
 cd ./server
@@ -58,7 +60,7 @@ if [ -f ./report/pvs.tasks ]; then
   sed "s|pvs-studio.com/en/docs/warnings/.*err.*Help.*|1|" ./report/pvs.tasks > ./report/pvs1.tasks 2>/dev/null || cp ./report/pvs.tasks ./report/pvs1.tasks
   sed "s|err Renew|1|" ./report/pvs1.tasks > ./report/pvs2.tasks 2>/dev/null || cp ./report/pvs1.tasks ./report/pvs2.tasks
 else
-  echo "⚠️  Отчет не создан (возможно, нет лицензии)"
+  echo "⚠️  Отчет не создан"
   exit 0
 fi
 
@@ -69,3 +71,14 @@ if grep -r 'err' ./report/pvs2.tasks 2>/dev/null; then
 fi
 
 echo "✅ PVS-Studio analysis completed successfully"
+
+===========================================
+КОНЕЦ КОДА ДЛЯ КОПИРОВАНИЯ
+===========================================
+
+ВАЖНО:
+1. Working directory в TeamCity должен быть ПУСТЫМ
+2. Скопируй весь код выше (от "set -e" до "completed successfully")
+3. Вставь в поле "Custom script"
+4. Сохрани шаг
+5. Запусти сборку
