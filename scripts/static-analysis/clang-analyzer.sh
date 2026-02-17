@@ -6,7 +6,7 @@ set +e
 
 echo "=== Установка зависимостей ==="
 apt-get update -y
-apt-get install -y clang build-essential qt5-qmake qtbase5-dev cmake
+apt-get install -y clang clang-tools build-essential qt5-qmake qtbase5-dev cmake
 
 echo "=== Переход в папку сервера ==="
 if [ ! -d "./server" ]; then
@@ -31,8 +31,6 @@ scan-build -o ./report-clang \
   --use-analyzer=clang \
   --html-title="Campus Helper - Clang Static Analyzer Report" \
   make 2>&1 | tee clang-analyzer.log
-
-ANALYZER_EXIT_CODE=${PIPESTATUS[0]}
 
 echo "=== Поиск HTML отчета ==="
 # scan-build создает отчеты в подпапках с timestamp
