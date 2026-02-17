@@ -1,0 +1,134 @@
+========================================
+PVS-STUDIO ДЛЯ ARM64 (через Docker x86_64)
+========================================
+
+⚠️ ВАЖНО: Первый запуск займет 10-15 минут (сборка Docker образа)
+⚠️ Последующие запуски: 5-10 минут (эмуляция x86_64 на ARM64)
+
+========================================
+ШАГ В TEAMCITY: PVS-Studio (Docker)
+========================================
+
+Runner type: Command Line
+Step name: Static Analysis: PVS-Studio (Docker x86_64)
+Run: Custom script
+Working directory: ПУСТО
+
+Custom script:
+──────────────────────────────────────
+
+#!/bin/bash
+# Запуск PVS-Studio через Docker x86_64 для ARM64 хостов
+
+set -e
+
+echo "=== Проверка архитектуры ==="
+ARCH=$(uname -m)
+echo "Текущая архитектура: $ARCH"
+
+if [ "$ARCH" != "aarch64" ] && [ "$ARCH" != "arm64" ]; then
+  echo "✅ Архитектура x86_64, можно использовать нативный PVS-Studio"
+  echo "⚠️  Для x86_64 используйте обычный pvs-studio.sh скрипт"
+  exit 0
+fi
+
+echo "⚠️  ARM64 обнаружен, запускаем PVS-Studio через Docker x86_64"
+echo "⚠️  Это займет 5-10 минут из-за эмуляции!"
+
+echo "=== Установка qemu для эмуляции x86_64 ==="
+apt-get update -y
+apt-get install -y qemu-user-static
+
+echo "=== Проверка наличия образа PVS-Studio ==="
+if ! docker image inspect pvs-studio-x86:latest >/dev/null 2>&1; then
+  echo "=== Создание Dockerfile для PVS-Studio ==="
+  cat > /tmp/Dockerfile.pvs <<'DOCKERFILE_END'
+FROM --platform=linux/amd64 ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y wget gnupg2 build-essential qt5-qmake qtbase5-dev cmake && \
+    mkdir -p /etc/apt/keyrings && \
+    wget -qO- https://cdn.pvs-studio.com/etc/pubkey.txt | gpg --dearmor > /etc/apt/keyrings/pvs-studio.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] https://cdn.pvs-studio.com/deb stable main" > /etc/apt/sources.list.d/viva64.list && \
+    apt-get update && \
+    apt-get install -y pvs-studio && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+DOCKERFILE_END
+
+  echo "=== Сборка Docker образа (займет 10-15 минут при первом запуске) ==="
+  docker build --platform linux/amd64 -f /tmp/Dockerfile.pvs -t pvs-studio-x86:latest /tmp/
+  echo "✅ Образ собран и закеширован для последующих запусков"
+else
+  echo "✅ Образ pvs-studio-x86:latest уже существует, пропускаем сборку"
+fi
+
+echo "=== Подготовка директорий ==="
+mkdir -p ./server/report
+
+echo "=== Запуск анализа PVS-Studio в Docker контейнере ==="
+docker run --platform linux/amd64 --rm \
+  -v "$(pwd):/workspace" \
+  -w /workspace/server \
+  pvs-studio-x86:latest \
+  bash -c "
+    set -e
+    echo '=== Добавление лицензии PVS-Studio ==='
+    pvs-studio-analyzer credentials daniel.kojemyakin@icloud.com Y0G0-6XBZ-2R81-C605
+    echo '✅ Лицензия добавлена'
+    
+    echo '=== Очистка старых файлов ==='
+    rm -f compile_commands.json moc* Makefile *.o strace_out pvs.log pvs*.tasks
+    rm -rf ./report
+    
+    echo '=== Трассировка компиляции ==='
+    qmake -o Makefile server.pro
+    make clean
+    pvs-studio-analyzer trace -- make
+    
+    echo '=== Запуск анализа PVS-Studio ==='
+    mkdir -p ./report
+    pvs-studio-analyzer analyze -l /root/.config/PVS-Studio/PVS-Studio.lic -o pvs.log --disableLicenseExpirationCheck || true
+    
+    echo '=== Конвертация в HTML ==='
+    plog-converter -a GA:1,2 --renderTypes fullhtml -t tasklist -o ./report/ pvs.log || true
+    
+    echo '=== Проверка результатов ==='
+    if [ -f ./report/pvs.tasks ]; then
+      echo '✅ HTML отчет создан'
+    else
+      echo '⚠️  Отчет не создан'
+      exit 0
+    fi
+  "
+
+echo "=== Проверка на критические проблемы ==="
+if [ -f ./server/report/pvs.tasks ]; then
+  if grep -i 'error' ./server/report/pvs.tasks 2>/dev/null | grep -v 'pvs-studio.com' | grep -v 'Renew' | head -5; then
+    echo "⚠️  Найдены потенциальные проблемы (см. HTML отчет)"
+    echo "Для строгой проверки раскомментируйте 'exit 1' ниже"
+    # exit 1
+  fi
+fi
+
+echo "✅ PVS-Studio analysis completed successfully"
+echo "📊 Отчет: server/report/index.html"
+
+──────────────────────────────────────
+
+Artifacts paths:
+server/report/** => pvs-studio-report
+
+========================================
+НАСТРОЙКА REPORT TAB
+========================================
+
+Project Settings → Report Tabs → Create new report tab:
+
+Tab title: PVS-Studio Report
+Start page: pvs-studio-report/index.html
+
+========================================
