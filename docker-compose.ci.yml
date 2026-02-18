@@ -1,4 +1,5 @@
-# Docker Compose для CI (main и feature). Порт НЕ пробрасывается.
+# Только для CI (TeamCity). Порт НЕ пробрасывается — нет конфликта.
+# В шаге TeamCity "Docker Compose" укажи этот файл: docker-compose.ci.yml
 
 services:
   server:
