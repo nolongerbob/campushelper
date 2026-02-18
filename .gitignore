@@ -5,6 +5,10 @@ build/
 # Qt
 *.pro.user
 .qmake.stash
+# CI/venv (SQLFluff и т.д.)
+.venv_sql/
+.venv_sqlfluff/
+
 # IDE
 .qtc_clangd/
 *.o
