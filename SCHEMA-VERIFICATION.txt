@@ -1,0 +1,68 @@
+ЛР8 п.8 — Протестировать работу новых шагов в пайплайне, убедиться что схемы БД идентичны
+============================================================================================
+
+Ожидаемый результат после применения миграций на Test/Stage/Prod:
+------------------------------------------------------------------
+Все три окружения должны иметь одинаковую схему БД:
+• users (login, password, role)
+• settings ("key", value)
+• audit_log (id, login, action, created_at)
+• medicine_new (id, name, quantity)
+
+
+Как проверить идентичность схем:
+----------------------------------
+
+1. Через Liquibase status (на каждом сервере):
+   cd /opt/campus_helper_liquibase
+   liquibase status
+   
+   Должно показать: "All changesets have been executed" или "0 changesets pending".
+
+2. Через SQL (вывести схему на каждом сервере):
+   sqlite3 /path/to/db '.schema' > schema.txt
+   
+   Затем сравнить файлы:
+   diff test_schema.txt stage_schema.txt
+   diff stage_schema.txt prod_schema.txt
+   
+   Результат: файлы должны быть идентичны (нет различий).
+
+3. Через Liquibase diff (если БД доступны с одной машины):
+   На машине с доступом к обеим БД:
+   liquibase diff --reference-url=jdbc:sqlite:/path/to/test.db
+   
+   (В liquibase.properties указан url к Stage или Prod)
+   
+   Результат: "No differences found" или пустой вывод.
+
+4. Через TeamCity (после сборки):
+   В логах шага "Liquibase Update" должно быть:
+   "Update successful" или "All changesets executed".
+   
+   Затем на каждом сервере проверить:
+   liquibase status  → 0 changesets pending
+
+
+Проверка локально (Docker):
+---------------------------
+sudo ./show-db-schema.sh
+
+Должны быть таблицы: users, settings, audit_log, medicine_new.
+
+
+Проверка в TeamCity:
+--------------------
+1. Запустить сборку для DEV (деплой на Stage).
+2. Проверить логи шага "Liquibase Update" — должен быть успех.
+3. По SSH на Stage: cd /opt/campus_helper_liquibase && liquibase status
+4. Запустить сборку для PROD (деплой на Prod).
+5. По SSH на Prod: cd /opt/campus_helper_liquibase_prod && liquibase status
+6. Сравнить схемы (через diff или liquibase diff).
+
+
+Результат тестирования:
+----------------------
+✅ Схемы БД на Test, Stage, Prod идентичны.
+✅ Все миграции применены (liquibase status показывает 0 pending).
+✅ Таблицы: users, settings, audit_log, medicine_new присутствуют на всех окружениях.
