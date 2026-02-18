@@ -1,0 +1,32 @@
+#!/bin/bash
+# Применить миграции Liquibase к БД в Docker volume
+
+set -e
+
+VOLUME_NAME=$(docker volume ls | grep -E 'documents_db-data|.*_db-data' | head -1 | awk '{print $2}')
+if [ -z "$VOLUME_NAME" ]; then
+  echo "Volume не найден. Запусти сначала: docker compose up -d"
+  exit 1
+fi
+
+echo "=== Применение миграций Liquibase к БД в volume: $VOLUME_NAME ==="
+
+docker run --rm \
+  -v "$VOLUME_NAME:/data" \
+  -v "$(pwd)/database/changelog:/changelog" \
+  -v "$(pwd):/project" \
+  -w /project \
+  openjdk:17-jre-slim \
+  bash -c "
+    apt-get update -qq && apt-get install -y -qq wget unzip >/dev/null 2>&1
+    wget -q https://github.com/liquibase/liquibase/releases/download/v4.24.0/liquibase-4.24.0.tar.gz -O /tmp/lb.tar.gz
+    tar -xzf /tmp/lb.tar.gz -C /tmp
+    cd /tmp
+    java -jar liquibase.jar \
+      --driver=org.sqlite.JDBC \
+      --url=jdbc:sqlite:/data/campus_helper.db \
+      --changeLogFile=/changelog/db.changelog-master.xml \
+      update
+  "
+
+echo "=== Миграции применены. Проверь схему: docker compose run --rm db-shell .schema ==="
