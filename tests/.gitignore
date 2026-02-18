@@ -1,0 +1,6 @@
+Makefile
+*.o
+moc_*
+*.moc
+campus_helper_tests
+results.xml
