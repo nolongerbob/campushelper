@@ -15,9 +15,11 @@ docker run --rm \
   -v "$VOLUME_NAME:/app" \
   -v "$(pwd)/database/changelog:/changelog" \
   -w /app \
-  eclipse-temurin:17-jre-alpine \
-  sh -c "
-    apk add --no-cache wget unzip >/dev/null 2>&1
+  ubuntu:22.04 \
+  bash -c "
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq >/dev/null 2>&1
+    apt-get install -y -qq openjdk-17-jre-headless wget >/dev/null 2>&1
     wget -q https://github.com/liquibase/liquibase/releases/download/v4.24.0/liquibase-4.24.0.tar.gz -O /tmp/lb.tar.gz
     tar -xzf /tmp/lb.tar.gz -C /tmp
     cd /tmp
