@@ -8,13 +8,20 @@ sudo docker compose down -v
 sudo docker compose up -d --build
 
 echo ""
-echo "=== Ожидание запуска контейнера ==="
+echo "=== Ожидание запуска контейнера (сервер создаёт БД) ==="
 sleep 5
 
 echo ""
+echo "=== Останавливаем сервер, чтобы разблокировать БД для миграций ==="
+sudo docker compose stop server 2>/dev/null || true
+
 echo "=== Применение миграций (settings, audit_log) через sqlite3 ==="
 sudo docker compose run --rm db-shell "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));" 2>&1
 echo "Миграции применены."
+
+echo "=== Запускаем сервер снова ==="
+sudo docker compose start server 2>&1
+sleep 2
 
 echo ""
 echo "=== Список таблиц ==="
