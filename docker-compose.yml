@@ -12,5 +12,15 @@ services:
       - db-data:/app/data
     restart: unless-stopped
 
+  # Просмотр схемы БД: docker compose run --rm db-shell .schema
+  # Интерактивно: docker compose run --rm db-shell
+  db-shell:
+    image: keinos/sqlite3:latest
+    volumes:
+      - db-data:/data
+    entrypoint: ["sqlite3", "/data/campus_helper.db"]
+    profiles:
+      - tools
+
 volumes:
   db-data:
