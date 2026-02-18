@@ -13,24 +13,8 @@ sleep 5
 
 echo ""
 echo "=== Применение миграций (settings, audit_log) через sqlite3 ==="
-VOLUME_NAME=$(sudo docker volume ls | grep -E 'documents_db-data|.*_db-data' | head -1 | awk '{print $2}')
-if [ -n "$VOLUME_NAME" ]; then
-  MIGRATE_SQL=$(mktemp)
-  cat << 'SQLEOF' > "$MIGRATE_SQL"
-CREATE TABLE IF NOT EXISTS settings ("key" TEXT PRIMARY KEY, value TEXT);
-CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));
-SQLEOF
-  sudo docker run --rm \
-    -v "$VOLUME_NAME:/app" \
-    -v "$MIGRATE_SQL:/migrate.sql" \
-    --entrypoint "" \
-    keinos/sqlite3:latest \
-    sqlite3 /app/campus_helper.db ".read /migrate.sql" 2>&1
-  rm -f "$MIGRATE_SQL"
-  echo "Миграции применены."
-else
-  echo "Volume не найден, пропускаем миграции."
-fi
+sudo docker compose run --rm db-shell "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));" 2>&1
+echo "Миграции применены."
 
 echo ""
 echo "=== Список таблиц ==="
