@@ -1,17 +1,8 @@
-// This is a personal academic project. Dear PVS-Studio, please check it.
-// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
 #include "simpleserver.h"
 
 #include <QTextStream>
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QDateTime>
-
-static void log(const QString &msg)
-{
-    QTextStream(stdout) << QDateTime::currentDateTime().toString(Qt::ISODate)
-                        << " [SERVER] " << msg << Qt::endl;
-}
 
 SimpleServer::SimpleServer(QObject *parent)
     : QTcpServer(parent)
@@ -28,19 +19,16 @@ void SimpleServer::initDatabase()
         m_db = QSqlDatabase::database(QStringLiteral("campus_helper_conn"));
     }
 
-    const QString dbPath = qEnvironmentVariableIsSet("DB_PATH")
-        ? qEnvironmentVariable("DB_PATH")
-        : QStringLiteral("campus_helper.db");
-    m_db.setDatabaseName(dbPath);
+    m_db.setDatabaseName(QStringLiteral("campus_helper.db"));
     if (!m_db.open()) {
         QTextStream(stderr) << "db open error: " << m_db.lastError().text() << Qt::endl;
         return;
     }
-    log(QStringLiteral("db is open: ") + dbPath);
+    QTextStream(stdout) << "db is open" << Qt::endl;
 
     QSqlQuery q(m_db);
     if (!q.exec(QStringLiteral(
-                    "CREATE TABLE IF NOT EXISTS authorization ("
+                    "CREATE TABLE IF NOT EXISTS users ("
                     " login TEXT PRIMARY KEY,"
                     " password TEXT NOT NULL,"
                     " role TEXT NOT NULL)"))) {
@@ -48,7 +36,7 @@ void SimpleServer::initDatabase()
     }
 
     if (!q.exec(QStringLiteral(
-                    "INSERT OR IGNORE INTO authorization(login,password,role) VALUES"
+                    "INSERT OR IGNORE INTO users(login,password,role) VALUES"
                     " ('student','student','student'),"
                     " ('teacher','teacher','teacher')"))) {
         QTextStream(stderr) << "db insert error: " << q.lastError().text() << Qt::endl;
@@ -91,13 +79,17 @@ void SimpleServer::onReadyRead()
             const QByteArray login = parts.value(0);
             const QByteArray pass = parts.value(1);
 
-            log(QStringLiteral("auth attempt: login=\"") + QString::fromUtf8(login)
-                + QStringLiteral("\" (db open: ") + (m_db.isOpen() ? QStringLiteral("yes") : QStringLiteral("no")) + QLatin1Char(')'));
+            QTextStream(stdout) << "\"auth&" << QString::fromUtf8(login)
+                                << "&" << QString::fromUtf8(pass) << "\"" << Qt::endl;
+
+            if (m_db.isOpen()) {
+                QTextStream(stdout) << "db is open" << Qt::endl;
+            }
 
             if (parts.size() >= 2 && m_db.isOpen()) {
                 QSqlQuery auth(m_db);
                 auth.prepare(QStringLiteral(
-                                 "SELECT role FROM authorization "
+                                 "SELECT role FROM users "
                                  "WHERE login=? AND password=?"));
                 auth.addBindValue(QString::fromUtf8(login));
                 auth.addBindValue(QString::fromUtf8(pass));
@@ -109,16 +101,22 @@ void SimpleServer::onReadyRead()
                     socket->write(role.toUtf8());
                     socket->write("\n");
                     socket->flush();
-                    log(QStringLiteral("authorization yes: \"") + QString::fromUtf8(login) + QLatin1Char('"'));
+                    QTextStream(stdout) << "login = \"" << QString::fromUtf8(login)
+                                       << "\" password = \"" << QString::fromUtf8(pass)
+                                       << "\" result = \"authorization yes\"" << Qt::endl;
                 } else {
                     socket->write("FAIL\n");
                     socket->flush();
-                    log(QStringLiteral("authorization error: \"") + QString::fromUtf8(login) + QLatin1Char('"'));
+                    QTextStream(stdout) << "login = \"" << QString::fromUtf8(login)
+                                       << "\" password = \"" << QString::fromUtf8(pass)
+                                       << "\" result = \"authorization error\"" << Qt::endl;
                 }
             } else {
                 socket->write("FAIL\n");
                 socket->flush();
-                log(QStringLiteral("authorization error (bad request or db): \"") + QString::fromUtf8(login) + QLatin1Char('"'));
+                QTextStream(stdout) << "login = \"" << QString::fromUtf8(login)
+                                   << "\" password = \"" << QString::fromUtf8(pass)
+                                   << "\" result = \"authorization error\"" << Qt::endl;
             }
             continue;
         }
@@ -126,49 +124,6 @@ void SimpleServer::onReadyRead()
         if (line.startsWith("LOGIN ")) {
             const QString user = QString::fromUtf8(line.mid(6));
             m_usernames[socket] = user;
-            continue;
-        }
-
-        // ADDUSER login password role — добавление пользователя в БД (только для teacher)
-        if (line.startsWith("ADDUSER ")) {
-            QList<QByteArray> parts = line.mid(8).split(' ');
-            const QString caller = m_usernames.value(socket);
-            if (caller != QStringLiteral("teacher")) {
-                socket->write("ADDUSER_FAIL Только преподаватель может добавлять пользователей\n");
-                socket->flush();
-                continue;
-            }
-            if (parts.size() < 3 || !m_db.isOpen()) {
-                socket->write("ADDUSER_FAIL Неверный формат или БД недоступна\n");
-                socket->flush();
-                continue;
-            }
-            const QString login = QString::fromUtf8(parts.value(0)).trimmed();
-            const QString password = QString::fromUtf8(parts.value(1));
-            const QString role = QString::fromUtf8(parts.value(2)).trimmed().toLower();
-            if (login.isEmpty() || password.isEmpty() || (role != QStringLiteral("student") && role != QStringLiteral("teacher"))) {
-                socket->write("ADDUSER_FAIL Логин, пароль и роль (student/teacher) обязательны\n");
-                socket->flush();
-                continue;
-            }
-            QSqlQuery ins(m_db);
-            ins.prepare(QStringLiteral(
-                "INSERT INTO authorization(login,password,role) VALUES(?,?,?)"));
-            ins.addBindValue(login);
-            ins.addBindValue(password);
-            ins.addBindValue(role);
-            if (ins.exec()) {
-                socket->write("ADDUSER_OK\n");
-                socket->flush();
-                log(QStringLiteral("user added: \"") + login + QStringLiteral("\" role=") + role);
-            } else {
-                QString err = ins.lastError().text();
-                if (err.contains(QStringLiteral("UNIQUE"), Qt::CaseInsensitive))
-                    socket->write("ADDUSER_FAIL Пользователь с таким логином уже существует\n");
-                else
-                    socket->write("ADDUSER_FAIL " + err.toUtf8() + "\n");
-                socket->flush();
-            }
             continue;
         }
 
@@ -198,6 +153,6 @@ void SimpleServer::onDisconnected()
     m_readBuffers.remove(socket);
     socket->deleteLater();
 
-    log(QStringLiteral("client disconnected: ") + user + QStringLiteral(" (fd ") + QString::number(desc) + QLatin1Char(')'));
+    QTextStream(stdout) << "Client is disconnected \n";
 }
 

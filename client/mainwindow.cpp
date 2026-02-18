@@ -1,13 +1,9 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "adduserdialog.h"
-#include "config.h"
 
 #include <QTcpSocket>
 #include <QTableWidget>
 #include <QTableWidgetItem>
-#include <QMenuBar>
-#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -15,10 +11,6 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
     setWindowTitle(QStringLiteral("АС «Campus Helper»"));
-
-    m_actionAddUser = findChild<QAction *>(QStringLiteral("actionAddUser"));
-    if (m_actionAddUser)
-        connect(m_actionAddUser, &QAction::triggered, this, &MainWindow::onAddUserTriggered);
 
     m_socket = new QTcpSocket(this);
     connect(m_socket, &QTcpSocket::connected,
@@ -48,7 +40,7 @@ void MainWindow::setUserName(const QString &name)
 
 void MainWindow::connectToServer()
 {
-    m_socket->connectToHost(getServerHost(), SERVER_PORT);
+    m_socket->connectToHost(QStringLiteral("127.0.0.1"), 45454);
 }
 
 void MainWindow::onServerConnected()
@@ -122,12 +114,4 @@ void MainWindow::applyRolePermissions()
         bool showResults = (m_role != UserRole::Guest);
         ui->tabWidget->setTabVisible(resultsIndex, showResults);
     }
-    if (m_actionAddUser)
-        m_actionAddUser->setVisible(m_role == UserRole::Teacher);
-}
-
-void MainWindow::onAddUserTriggered()
-{
-    AddUserDialog dlg(getServerHost(), SERVER_PORT, this);
-    dlg.exec();
 }
