@@ -2,6 +2,4 @@
 dialect = sqlite
 templater = raw
 sql_file_exts = .sql
-
-[sqlfluff:rules]
 max_line_length = 120
