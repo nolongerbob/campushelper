@@ -1,0 +1,53 @@
+========================================
+ЛАБОРАТОРНАЯ РАБОТА 8 — SSH-ШАГ ДЕПЛОЯ НА STAGE С LIQUIBASE
+========================================
+
+Полный скрипт для шага "Run remote script via SSH" / "SSH Exec" в TeamCity.
+Этот шаг выполняется на сервере Stage по SSH.
+
+========================================
+ШАГ: Deploy to Stage (SSH Exec / Run remote script via SSH)
+========================================
+
+Runner type: SSH Exec (или Run remote script via SSH)
+Step name: Deploy to Stage
+Target: Stage server (SSH host, user, key)
+Working directory: ПУСТО (команды выполняются на Stage)
+
+Custom script / Commands:
+──────────────────────────────────────
+
+#!/bin/sh
+set -e
+
+echo "=== Деплой на Stage: остановка старого контейнера ==="
+cd /opt/campus_helper_stage  # или путь, где у тебя docker-compose.stage.yml
+docker compose -f docker-compose.stage.yml down || true
+
+echo "=== Pull нового образа из Docker Hub ==="
+export DOCKER_IMAGE=danprog19/campus-helper-server:%build.number%  # или latest, или переменная TeamCity
+docker pull "$DOCKER_IMAGE" || docker pull danprog19/campus-helper-server:latest
+
+echo "=== Запуск нового контейнера ==="
+docker compose -f docker-compose.stage.yml up -d
+
+echo "=== Ожидание запуска контейнера ==="
+sleep 5
+
+echo "=== Сверка схемы БД на Stage через Liquibase (ЛР8) ==="
+cd /opt/campus_helper_liquibase  # каталог с liquibase.properties и database/changelog/
+liquibase update
+liquibase status
+
+echo "=== Деплой завершён ==="
+
+──────────────────────────────────────
+
+Примечания:
+- Путь `/opt/campus_helper_stage` — замени на реальный путь на Stage, где лежит docker-compose.stage.yml.
+- Путь `/opt/campus_helper_liquibase` — замени на путь, где на Stage лежит Liquibase-проект (liquibase.properties, database/changelog/).
+- Переменная `%build.number%` — это номер сборки TeamCity (если используешь теги образов). Если образы всегда latest — убери `:%build.number%`.
+- На Stage должны быть установлены: Docker, docker-compose, Java, Liquibase (см. ЧТО_СДЕЛАТЬ_ЧТОБЫ_РАБОТАЛО.md).
+- БД SQLite в volume на хосте Stage — поэтому liquibase update выполняется на хосте (не в контейнере).
+
+========================================
