@@ -16,13 +16,7 @@ echo "=== Останавливаем сервер, чтобы разблокир
 sudo docker compose stop server 2>/dev/null || true
 
 echo "=== Применение миграций (settings, audit_log) через sqlite3 ==="
-VOL_NAME=$(sudo docker volume ls --format '{{.Name}}' | grep -E '_db-data|db-data' | head -1)
-if [ -z "$VOL_NAME" ]; then VOL_NAME="documents_db-data"; fi
-sudo docker run --rm --user root \
-  -v "$VOL_NAME:/app:rw" \
-  --entrypoint "" \
-  keinos/sqlite3:latest \
-  sqlite3 /app/campus_helper.db "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));" 2>&1
+sudo docker compose run --rm --user root --entrypoint "" db-shell sqlite3 /app/campus_helper.db "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));" 2>&1
 echo "Миграции применены."
 
 echo "=== Запускаем сервер снова ==="
