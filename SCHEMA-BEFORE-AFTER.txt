@@ -1,0 +1,33 @@
+ЛР8 п.7 — Изменение в БД и актуальная схема
+============================================
+
+Схемы базы данных ДО внесения изменений (на Test):
+--------------------------------------------------
+• users (login TEXT PRIMARY KEY, password TEXT NOT NULL, role TEXT NOT NULL)
+• начальные данные: student/student, teacher/teacher
+
+(Плюс при наличии: settings — таблица настроек из миграции 002.)
+
+
+Внесённое изменение в базу данных:
+----------------------------------
+Добавлена таблица audit_log (миграция 003):
+
+  CREATE TABLE audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      login TEXT NOT NULL,
+      action TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+  );
+
+Назначение: журнал действий пользователей (логин, действие, время).
+
+
+Схемы базы данных ПОСЛЕ внесения изменений:
+------------------------------------------
+• users — без изменений
+• settings — без изменений (если уже была)
+• audit_log — новая таблица (ЛР8 п.7)
+
+Актуальная схема в репозитории: schema/001_initial.sql, 002_add_settings.sql, 003_audit_log.sql.
+Миграции Liquibase: database/changelog/001_initial.sql, 002_add_settings.sql, 003_audit_log.sql.
