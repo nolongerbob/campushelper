@@ -17,8 +17,8 @@ services:
   db-shell:
     image: keinos/sqlite3:latest
     volumes:
-      - db-data:/data
-    entrypoint: ["sqlite3", "/data/campus_helper.db"]
+      - db-data:/app/data
+    entrypoint: ["sqlite3", "/app/data/campus_helper.db"]
 
 volumes:
   db-data:
