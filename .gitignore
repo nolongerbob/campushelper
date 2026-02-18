@@ -11,6 +11,8 @@ build/
 
 # IDE
 .qtc_clangd/
+# TeamCity agent (локальные данные)
+teamcity/
 *.o
 *.so
 moc_*
