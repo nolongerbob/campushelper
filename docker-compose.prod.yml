@@ -1,0 +1,18 @@
+# PROD: развёртывание на prod-сервере (ЛР8)
+# На сервере: docker compose -f docker-compose.prod.yml up -d
+# DOCKER_IMAGE задаётся из TeamCity (тег сборки или latest).
+
+services:
+  app:
+    image: ${DOCKER_IMAGE:-danprog19/campus-helper-server:latest}
+    container_name: campus-helper-prod
+    ports:
+      - "45454:45454"
+    environment:
+      - DB_PATH=/app/data/campus_helper.db
+    volumes:
+      - prod-db-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  prod-db-data:

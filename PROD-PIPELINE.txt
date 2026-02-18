@@ -1,0 +1,20 @@
+ЛР8 п.6 — отдельный пайплайн PROD и шаг SSH на Prod со сверкой схем БД
+=======================================================================
+
+1. В TeamCity: Clone build configuration из конфигурации для DEV.
+   Имя новой: Deploy PROD.
+
+2. VCS: ветка main (или prod). Триггер — ручной или по тегу.
+
+3. В Deploy PROD добавь шаг SSH Exec (подключение к PROD-серверу).
+   Step name: Deploy to PROD.
+   В поле Script вставь содержимое файла: scripts/deploy-prod-ssh.sh
+   Либо задай на агенте/в шаге переменные:
+   PROD_DIR=/путь/на/prod (где docker-compose.prod.yml)
+   LIQUIBASE_DIR=/путь/на/prod (где liquibase.properties и database/changelog)
+   DOCKER_IMAGE=твой-registry/campus-helper-server:%build.number%
+
+4. На PROD-сервере один раз:
+   - Установи Docker, Java, Liquibase.
+   - Скопируй в PROD_DIR: docker-compose.prod.yml (есть в репо).
+   - Создай LIQUIBASE_DIR, скопируй liquibase.properties (url на Prod-БД) и database/changelog.
