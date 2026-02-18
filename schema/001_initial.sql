@@ -9,6 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Начальные данные (опционально, для разработки/тестов)
 INSERT OR IGNORE INTO users (login, password, role) VALUES (
-('student', 'student', 'student'),
-('teacher', 'teacher', 'teacher')
+    ('student', 'student', 'student'),
+    ('teacher', 'teacher', 'teacher')
 );
