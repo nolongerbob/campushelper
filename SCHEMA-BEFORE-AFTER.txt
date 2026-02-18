@@ -23,14 +23,23 @@
 Назначение: журнал действий пользователей (логин, действие, время).
 
 
+Добавлена таблица medicine_new (миграция 004, изменение на Test):
+  CREATE TABLE medicine_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 0
+  );
+
+
 Схемы базы данных ПОСЛЕ внесения изменений:
 ------------------------------------------
 • users — без изменений
-• settings — без изменений (если уже была)
-• audit_log — новая таблица (ЛР8 п.7)
+• settings — без изменений
+• audit_log — журнал аудита
+• medicine_new — новая таблица (ЛР8, изменение на Test)
 
-Актуальная схема в репозитории: schema/001_initial.sql, 002_add_settings.sql, 003_audit_log.sql.
-Миграции Liquibase: database/changelog/001_initial.sql, 002_add_settings.sql, 003_audit_log.sql.
+Актуальная схема в репозитории: schema/001_initial.sql, 002_add_settings.sql, 003_audit_log.sql, 004_medicine_new.sql.
+Миграции Liquibase: database/changelog/001–004.
 
 
 Как посмотреть схему БД через Docker

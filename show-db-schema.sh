@@ -16,7 +16,7 @@ echo "=== Останавливаем сервер, чтобы разблокир
 sudo docker compose stop server 2>/dev/null || true
 
 echo "=== Применение миграций (settings, audit_log) через sqlite3 ==="
-sudo docker compose run --rm --user root --entrypoint "" db-shell sqlite3 /app/campus_helper.db "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));" 2>&1
+sudo docker compose run --rm --user root --entrypoint "" db-shell sqlite3 /app/campus_helper.db "CREATE TABLE IF NOT EXISTS settings (\"key\" TEXT PRIMARY KEY, value TEXT); CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now'))); CREATE TABLE IF NOT EXISTS medicine_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, quantity INTEGER NOT NULL DEFAULT 0);" 2>&1
 echo "Миграции применены."
 
 echo "=== Запускаем сервер снова ==="
@@ -36,6 +36,7 @@ echo "=== Схема каждой таблицы ==="
 sudo docker compose run --rm db-shell ".schema users" 2>/dev/null || echo "Таблица users не найдена"
 sudo docker compose run --rm db-shell ".schema settings" 2>/dev/null || echo "Таблица settings не найдена"
 sudo docker compose run --rm db-shell ".schema audit_log" 2>/dev/null || echo "Таблица audit_log не найдена"
+sudo docker compose run --rm db-shell ".schema medicine_new" 2>/dev/null || echo "Таблица medicine_new не найдена"
 
 echo ""
 echo "=== Данные из users ==="
