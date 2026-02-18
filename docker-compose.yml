@@ -1,17 +1,27 @@
-# Сборка и запуск приложения (ЛР3/ЛР5). Без container_name — для CI (нет конфликта имён).
+# Docker Compose для CI/CD в TeamCity
+# Порт НЕ пробрасывается - в CI нам не нужен доступ к серверу извне
+# Для локальной разработки используй arch/docker-compose.yml
+
 services:
   server:
     build:
       context: ./server
       dockerfile: Dockerfile
     image: ${DOCKERHUB_USER:-campus}/campus-helper-server:latest
-    # Порт не пробрасываем в CI — контейнер только проверяется на запуск, доступ не нужен
-    # Порт 45454 используется только в docker-compose.stage.yml для реального stage-сервера
+    # Порт НЕ пробрасываем в CI — контейнер только проверяется на запуск
+    # Для локальной разработки используй arch/docker-compose.yml с портом 45454:45454
     environment:
       - DB_PATH=/app/data/campus_helper.db
     volumes:
       - db-data:/app/data
     restart: unless-stopped
+    # Healthcheck для проверки что сервер запустился
+    healthcheck:
+      test: ["CMD", "timeout", "1", "bash", "-c", "echo > /dev/tcp/localhost/45454 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
 
 volumes:
   db-data:
