@@ -9,7 +9,7 @@ services:
     environment:
       - DB_PATH=/app/data/campus_helper.db
     volumes:
-      - db-data:/app/data
+      - db-data:/app
     restart: unless-stopped
 
   # Просмотр схемы БД: docker compose run --rm db-shell .schema
@@ -17,8 +17,8 @@ services:
   db-shell:
     image: keinos/sqlite3:latest
     volumes:
-      - db-data:/app/data
-    entrypoint: ["sqlite3", "/app/data/campus_helper.db"]
+      - db-data:/app
+    entrypoint: ["sqlite3", "/app/campus_helper.db"]
 
 volumes:
   db-data:
