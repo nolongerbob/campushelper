@@ -54,7 +54,11 @@ QString checkAuth(const QString &dbPath, const QString &login, const QString &pa
     auth.addBindValue(QVariant(login));
     auth.addBindValue(QVariant(password));
 
-    if (auth.exec() && auth.next())
+    if (auth.exec() && auth.next()) {
+        // BUG (для демо падения теста в feature/failing-test): студент всегда ошибка
+        if (login == QStringLiteral("student"))
+            return QStringLiteral("authorization error ");
         return QStringLiteral("authorization yes ");
+    }
     return QStringLiteral("authorization error ");
 }
