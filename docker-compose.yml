@@ -19,8 +19,6 @@ services:
     volumes:
       - db-data:/data
     entrypoint: ["sqlite3", "/data/campus_helper.db"]
-    profiles:
-      - tools
 
 volumes:
   db-data:

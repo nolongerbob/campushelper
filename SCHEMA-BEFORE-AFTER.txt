@@ -36,6 +36,6 @@
 Как посмотреть схему БД через Docker
 -------------------------------------
 Сборка и запуск:  docker compose up -d --build
-Схема одной командой:  docker compose run --rm --profile tools db-shell .schema
-Интерактивный sqlite3:  docker compose run --rm --profile tools db-shell
+Схема одной командой:  docker compose run --rm db-shell .schema
+Интерактивный sqlite3:  docker compose run --rm db-shell
   Внутри: .tables  — список таблиц; .schema — схема; SELECT * FROM users; и т.д.
