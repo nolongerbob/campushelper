@@ -47,7 +47,6 @@ cppcheck --enable=all \
   --output-file=./cppcheck-report/report.xml \
   --suppress=missingIncludeSystem \
   *.cpp *.h 2>&1 | tee ./cppcheck-report/output.txt || true
-EXIT_CODE=${PIPESTATUS[0]}
 
 # Генерация HTML отчета (всегда, даже если были ошибки)
 echo "=== Генерация HTML отчета ==="
