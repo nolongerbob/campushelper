@@ -27,7 +27,8 @@ if [ -n "$VOLUME_NAME" ]; then
       wget -q https://github.com/liquibase/liquibase/releases/download/v4.24.0/liquibase-4.24.0.tar.gz -O /tmp/lb.tar.gz
       tar -xzf /tmp/lb.tar.gz -C /tmp
       cd /tmp
-      java -jar liquibase.jar \
+      LIQUIBASE_JAR=\$(find /tmp -name 'liquibase.jar' -o -name 'liquibase-*.jar' | head -1)
+      java -jar \"\$LIQUIBASE_JAR\" \
         --driver=org.sqlite.JDBC \
         --url=jdbc:sqlite:/app/campus_helper.db \
         --changeLogFile=/changelog/db.changelog-master.xml \
