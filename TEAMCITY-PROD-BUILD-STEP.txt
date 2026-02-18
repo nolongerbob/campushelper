@@ -1,0 +1,73 @@
+========================================
+ШАГ В TEAMCITY: Deploy to PROD (SSH Exec)
+========================================
+
+1. Открой Build Configuration "Deploy PROD" (или создай клон из DEV).
+
+2. Build Steps → Add build step
+
+3. Настройки шага:
+   ──────────────────────────────────────
+   Runner type: SSH Exec
+   Step name: Deploy to PROD
+   
+   SSH connection:
+   - Target: PROD-сервер (host, user, key)
+   - Authentication: SSH key или username/password
+   
+   Commands:
+   ──────────────────────────────────────
+   Вставь весь скрипт ниже (или укажи путь к scripts/deploy-prod-ssh.sh):
+
+#!/bin/sh
+set -e
+
+PROD_DIR="${PROD_DIR:-/opt/campus_helper_prod}"
+LIQUIBASE_DIR="${LIQUIBASE_DIR:-/opt/campus_helper_liquibase_prod}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-danprog19/campus-helper-server:%build.number%}"
+
+echo "=== Деплой на PROD: остановка старого контейнера ==="
+cd "$PROD_DIR"
+docker compose -f docker-compose.prod.yml down || true
+
+echo "=== Pull образа ==="
+docker pull "$DOCKER_IMAGE"
+
+echo "=== Запуск контейнера ==="
+export DOCKER_IMAGE
+docker compose -f docker-compose.prod.yml up -d
+
+echo "=== Ожидание запуска ==="
+sleep 5
+
+echo "=== Сверка схемы БД на PROD (Liquibase) ==="
+cd "$LIQUIBASE_DIR"
+liquibase update
+liquibase status
+
+echo "=== Деплой на PROD завершён ==="
+
+   ──────────────────────────────────────
+   
+4. Environment variables (опционально, если пути другие):
+   PROD_DIR=/путь/на/prod (где docker-compose.prod.yml)
+   LIQUIBASE_DIR=/путь/на/prod (где liquibase.properties)
+   DOCKER_IMAGE=твой-registry/campus-helper-server:%build.number%
+
+5. Save шаг.
+
+========================================
+ПЕРЕД ЭТИМ НА PROD-СЕРВЕРЕ (один раз):
+========================================
+
+1. Установи: Docker, docker-compose, Java, Liquibase
+2. Создай каталоги:
+   mkdir -p /opt/campus_helper_prod
+   mkdir -p /opt/campus_helper_liquibase_prod/database/changelog
+3. Скопируй файлы:
+   - docker-compose.prod.yml → /opt/campus_helper_prod/
+   - liquibase.properties → /opt/campus_helper_liquibase_prod/ (отредактируй url на Prod-БД)
+   - database/changelog/* → /opt/campus_helper_liquibase_prod/database/changelog/
+4. Проверь: cd /opt/campus_helper_liquibase_prod && liquibase update
+
+========================================
