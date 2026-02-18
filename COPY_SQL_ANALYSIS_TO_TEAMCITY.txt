@@ -1,0 +1,44 @@
+========================================
+ЛАБОРАТОРНАЯ РАБОТА 8 — ПРОВЕРКА БЕЗОПАСНОСТИ SQL В TEAMCITY
+========================================
+
+Добавить шаг для всех веток (после Unit Tests или в начале пайплайна).
+
+========================================
+ШАГ: SQL Security Check (Command Line)
+========================================
+
+Runner type: Command Line
+Step name: SQL Security Check
+Run: Custom script
+Working directory: ПУСТО (корень репозитория)
+
+Custom script:
+──────────────────────────────────────
+
+#!/bin/sh
+set -e
+
+echo "=== Установка SQLFluff ==="
+apt-get update -y
+apt-get install -y python3-pip
+pip3 install --break-system-packages sqlfluff 2>/dev/null || pip3 install sqlfluff
+
+echo "=== Проверка наличия SQL-файлов в schema/ ==="
+if [ ! -d schema ] || [ -z "$(find schema -name '*.sql' 2>/dev/null)" ]; then
+  echo "WARNING: schema/ или *.sql не найдены, шаг пропущен"
+  exit 0
+fi
+
+echo "=== Статический анализ SQL (SQLFluff, диалект SQLite) ==="
+sqlfluff lint schema/ --dialect sqlite
+echo "=== SQL Security Check завершён успешно ==="
+
+──────────────────────────────────────
+
+Обоснование выбора инструмента (для отчёта):
+- Анализ проведён на https://analysis-tools.dev/tag/sql
+- Выбран SQLFluff: поддержка диалекта SQLite, удобная интеграция в CI (pip),
+  проверка стиля и частично антипаттернов SQL, активная разработка.
+
+========================================
