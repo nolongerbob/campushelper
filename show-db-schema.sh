@@ -1,5 +1,5 @@
 #!/bin/bash
-# Вывести схему БД через Docker
+# Применить миграции Liquibase и вывести схему БД через Docker
 
 set -e
 
@@ -10,6 +10,31 @@ sudo docker compose up -d --build
 echo ""
 echo "=== Ожидание запуска контейнера ==="
 sleep 5
+
+echo ""
+echo "=== Применение миграций Liquibase ==="
+VOLUME_NAME=$(sudo docker volume ls | grep -E 'documents_db-data|.*_db-data' | head -1 | awk '{print $2}')
+if [ -n "$VOLUME_NAME" ]; then
+  sudo docker run --rm \
+    -v "$VOLUME_NAME:/app" \
+    -v "$(pwd)/database/changelog:/changelog" \
+    -w /app \
+    openjdk:17-jre-slim \
+    bash -c "
+      apt-get update -qq && apt-get install -y -qq wget unzip >/dev/null 2>&1
+      wget -q https://github.com/liquibase/liquibase/releases/download/v4.24.0/liquibase-4.24.0.tar.gz -O /tmp/lb.tar.gz
+      tar -xzf /tmp/lb.tar.gz -C /tmp
+      cd /tmp
+      java -jar liquibase.jar \
+        --driver=org.sqlite.JDBC \
+        --url=jdbc:sqlite:/app/campus_helper.db \
+        --changeLogFile=/changelog/db.changelog-master.xml \
+        update
+    " 2>&1
+  echo "Миграции применены."
+else
+  echo "Volume не найден, пропускаем миграции."
+fi
 
 echo ""
 echo "=== Список таблиц ==="
