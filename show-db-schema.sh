@@ -12,28 +12,21 @@ echo "=== Ожидание запуска контейнера ==="
 sleep 5
 
 echo ""
-echo "=== Применение миграций Liquibase ==="
+echo "=== Применение миграций (settings, audit_log) через sqlite3 ==="
 VOLUME_NAME=$(sudo docker volume ls | grep -E 'documents_db-data|.*_db-data' | head -1 | awk '{print $2}')
 if [ -n "$VOLUME_NAME" ]; then
+  MIGRATE_SQL=$(mktemp)
+  cat << 'SQLEOF' > "$MIGRATE_SQL"
+CREATE TABLE IF NOT EXISTS settings ("key" TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, login TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')));
+SQLEOF
   sudo docker run --rm \
     -v "$VOLUME_NAME:/app" \
-    -v "$(pwd)/database/changelog:/changelog" \
-    -w /app \
-    ubuntu:22.04 \
-    bash -c "
-      export DEBIAN_FRONTEND=noninteractive
-      apt-get update -qq >/dev/null 2>&1
-      apt-get install -y -qq openjdk-17-jre-headless wget >/dev/null 2>&1
-      wget -q https://github.com/liquibase/liquibase/releases/download/v4.24.0/liquibase-4.24.0.tar.gz -O /tmp/lb.tar.gz
-      tar -xzf /tmp/lb.tar.gz -C /tmp
-      cd /tmp
-      chmod +x liquibase
-      ./liquibase \
-        --driver=org.sqlite.JDBC \
-        --url=jdbc:sqlite:/app/campus_helper.db \
-        --changeLogFile=/changelog/db.changelog-master.xml \
-        update
-    " 2>&1
+    -v "$MIGRATE_SQL:/migrate.sql" \
+    --entrypoint "" \
+    keinos/sqlite3:latest \
+    sqlite3 /app/campus_helper.db ".read /migrate.sql" 2>&1
+  rm -f "$MIGRATE_SQL"
   echo "Миграции применены."
 else
   echo "Volume не найден, пропускаем миграции."
